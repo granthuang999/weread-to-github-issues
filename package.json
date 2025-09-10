@@ -1,5 +1,5 @@
 {
-  "name": "test-notion-weread",
+  "name": "weread-to-github-issues",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
@@ -7,20 +7,18 @@
     "sync": "ts-node src/index.ts --all",
     "sync:full": "ts-node src/index.ts --all --full-sync",
     "build": "tsc",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "test:connection": "ts-node src/test-connection.ts",
-    "test:config": "ts-node src/test-config.ts",
-    "test:author": "ts-node src/test-author-filter.ts"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "Sync your WeRead notes and highlights to GitHub Issues.",
   "devDependencies": {
     "@types/node": "^20.17.46",
     "ts-node": "^10.9.2"
   },
   "dependencies": {
+    "@octokit/rest": "^21.0.0",
     "axios": "^1.9.0",
     "dotenv": "^16.5.0",
     "typescript": "^5.8.3"
