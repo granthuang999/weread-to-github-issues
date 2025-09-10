@@ -34,7 +34,7 @@ export function getHighlightHeaders(
     Accept: "application/json, text/plain, */*",
     "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8,zh-TW;q=0.7",
     "Accept-Encoding": "gzip, deflate, br, zstd",
-    Referer: `https://weread.qq.com/web/reader/${bookId}`,
+    Referer: `https://weread.qq.com/weba/reader/${bookId}`,
     Origin: "https://weread.qq.com",
     "sec-ch-ua":
       '"Google Chrome";v="135", "Not-A.Brand";v="8", "Chromium";v="135"',
