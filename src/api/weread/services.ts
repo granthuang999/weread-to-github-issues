@@ -29,7 +29,7 @@ export { getBookProgress };
 export async function refreshSession(currentCookie: string): Promise<string> {
   console.log("正在刷新微信读书会话...");
   // 访问一个真实的数据API端点以确保会话在 i.weread.qq.com 域上是活跃的
-  const refreshUrl = NOTEBOOK_API; 
+  const refreshUrl = NOTEBOOK_API;
   let updatedCookie = currentCookie;
 
   try {
@@ -83,16 +83,16 @@ export async function getNotebookBooks(cookie: string): Promise<any[]> {
 }
 
 /**
- * 从微信读书书架获取书籍列表
+ * 从微信读书书架获取书籍列表 (修正版)
  */
 export async function getBookshelfBooks(cookie: string): Promise<any[]> {
   console.log("\n=== 从微信读书书架获取书籍列表 ===");
   try {
     const headers = getHeaders(cookie);
-    // 书架API需要POST请求
+    // 关键修正：书架API现在是POST请求
     const response = await axios.post(BOOKSHELF_URL, { "synckey": 0, "bookIds": [] }, { headers });
 
-    // 书架API返回的数据结构是 { "updates": [...] }
+    // 关键修正：书架API返回的数据在 "updates" 字段中
     if (response.data && response.data.updates) {
        // 过滤掉已删除或非书籍类型的数据
       const books = response.data.updates.filter((item: any) => item.book);
