@@ -4,7 +4,7 @@
 
 import axios from "axios";
 import {
-  WEREAD_BASE_URL,
+  WEREAD_API_URL,
   NOTEBOOK_API,
   BOOKMARKS_API,
   BOOKSHELF_URL,
@@ -31,8 +31,8 @@ export async function refreshSession(currentCookie: string): Promise<string> {
   console.log("正在刷新微信读书会话...");
 
   const urlsToVisit = [
-    `${WEREAD_BASE_URL}/`, // 首页
-    `${WEREAD_BASE_URL}/web/shelf`, // 书架页
+    `${WEREAD_API_URL}/`, // 首页
+    `${WEREAD_API_URL}/web/shelf`, // 书架页
   ];
 
   let updatedCookie = currentCookie;
@@ -40,7 +40,7 @@ export async function refreshSession(currentCookie: string): Promise<string> {
   for (const url of urlsToVisit) {
     try {
       console.log(`访问: ${url} 以刷新会话...`);
-      const headers = { ...getHeaders(updatedCookie), Referer: WEREAD_BASE_URL };
+      const headers = { ...getHeaders(updatedCookie), Referer: WEREAD_API_URL };
       const response = await axios.get(url, { headers, maxRedirects: 5, });
 
       if (response.headers["set-cookie"]) {
