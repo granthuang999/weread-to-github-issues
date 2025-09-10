@@ -55,8 +55,7 @@ export async function refreshSession(currentCookie: string): Promise<string> {
 }
 
 /**
- * 从微信读书笔记本获取书籍列表 (最终修正版)
- * 采用您提供的正确逻辑
+ * 从微信读书笔记本获取书籍列表 (最终修正版 - 包含调试日志)
  */
 export async function getNotebookBooks(cookie: string): Promise<any[]> {
   console.log("\n=== 从微信读书笔记本获取书籍列表 ===");
@@ -65,11 +64,14 @@ export async function getNotebookBooks(cookie: string): Promise<any[]> {
     const headers = getNotebookHeaders(cookie);
     const response = await axios.get(NOTEBOOK_API, { headers });
     
+    // 【新增】根据你的建议，添加详细的调试日志
+    console.log("笔记本API原始响应:", JSON.stringify(response.data, null, 2));
+
     // 关键修正：兼容 books 和 notebooks 两种返回结构
     if (response.data && (response.data.books || response.data.notebooks)) {
       const list = response.data.books || response.data.notebooks;
       console.log(`笔记本中共有 ${list.length} 本书`);
-      // 笔记本API返回的数据包含book实体，需要解构
+      // 关键修正：处理嵌套的 book 对象
       return list.map((item: any) => item.book || item);
     } else {
        console.log("笔记本API响应正常，但没有书籍数据。");
@@ -77,21 +79,27 @@ export async function getNotebookBooks(cookie: string): Promise<any[]> {
     }
   } catch (error: any) {
     console.error("获取笔记本列表失败:", error.message);
-    if (error.response && error.response.status === 401) {
-       console.error("错误详情: 身份验证失败(401)，请确认 Cookie 或 headers。");
+    if (error.response) {
+      // 【新增】根据你的建议，打印详细的错误响应
+      console.error("响应状态码:", error.response.status);
+      console.error("响应头:", JSON.stringify(error.response.headers, null, 2));
+      console.error("响应体:", JSON.stringify(error.response.data, null, 2));
     }
     return [];
   }
 }
 
 /**
- * 从微信读书书架获取书籍列表 (恢复到原始版本)
+ * 从微信读书书架获取书籍列表 (恢复到原始版本 - 包含调试日志)
  */
 export async function getBookshelfBooks(cookie: string): Promise<any[]> {
   console.log("\n=== 从微信读书书架获取书籍列表 ===");
   try {
     const headers = getHeaders(cookie);
     const response = await axios.get(BOOKSHELF_URL, { headers });
+
+    // 【新增】根据你的建议，添加详细的调试日志
+    console.log("书架API原始响应:", JSON.stringify(response.data, null, 2));
 
     if (response.data && response.data.books) {
       console.log(`书架中共有 ${response.data.books.length} 本书`);
@@ -102,6 +110,12 @@ export async function getBookshelfBooks(cookie: string): Promise<any[]> {
     }
   } catch (error: any) {
     console.error("获取书架列表失败:", error.message);
+    if (error.response) {
+      // 【新增】根据你的建议，打印详细的错误响应
+      console.error("响应状态码:", error.response.status);
+      console.error("响应头:", JSON.stringify(error.response.headers, null, 2));
+      console.error("响应体:", JSON.stringify(error.response.data, null, 2));
+    }
     return [];
   }
 }
