@@ -4,7 +4,6 @@
 
 import axios from "axios";
 import {
-  WEREAD_API_URL,
   NOTEBOOK_API,
   BOOKMARKS_API,
   BOOKSHELF_URL,
@@ -154,7 +153,7 @@ export async function getBookThoughts(
   cookie: string,
   bookId: string,
   synckey: string = "0"
-): Promise<RawThoughtsData | null> {
+): Promise<RawHighlightsData | null> {
   const url = `${BOOK_THOUGHTS_API}?bookId=${bookId}&listType=11&mine=1&synckey=${synckey}`;
   try {
     const headers = getHighlightHeaders(cookie, bookId);
@@ -165,3 +164,4 @@ export async function getBookThoughts(
     return null;
   }
 }
+
