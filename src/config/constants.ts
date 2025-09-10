@@ -2,6 +2,9 @@
  * Constants used in the project (Final Correction)
  */
 
+// Local directory to store sync state files, required for compilation.
+export const SYNC_STATE_DIR = "data/sync-state";
+
 // The primary domain for WeRead data APIs
 export const WEREAD_API_URL = "https://i.weread.qq.com";
 
