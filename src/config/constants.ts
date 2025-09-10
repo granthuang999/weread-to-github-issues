@@ -1,21 +1,19 @@
 /**
- * Constants used in the project
+ * Constants used in the project (Final Correction)
  */
 
-// Local directory to store sync state files
-export const SYNC_STATE_DIR = "data/sync-state";
+// The primary domain for WeRead data APIs
+export const WEREAD_API_URL = "https://i.weread.qq.com";
 
-// WeRead API Endpoints
-export const WEREAD_BASE_URL = "https://weread.qq.com";
-export const BOOKSHELF_URL = "https://weread.qq.com/web/shelf";
-export const BOOK_INFO_URL = "https://weread.qq.com/web/book/info";
-export const BOOKMARKS_API = "https://weread.qq.com/web/book/bookmarklist";
-export const BOOK_THOUGHTS_API = "https://weread.qq.com/web/review/list";
-export const BOOK_PROGRESS_API = "https://weread.qq.com/web/book/progress";
+// A more reliable, modern endpoint for fetching the bookshelf list
+export const BOOKSHELF_URL = `${WEREAD_API_URL}/shelf/friendCommon`;
 
-// The old, now incorrect URL for notebooks
-// export const NOTEBOOK_API = "https://weread.qq.com/web/notebooks"; 
+// This endpoint remains correct for fetching books with notes
+export const NOTEBOOK_API = `${WEREAD_API_URL}/user/notebooks`;
 
-// The new, correct API endpoint for notebooks
-export const NOTEBOOK_API = "https://i.weread.qq.com/user/notebooks";
+// Other APIs updated to the consistent domain
+export const BOOK_INFO_URL = `${WEREAD_API_URL}/book/info`;
+export const BOOKMARKS_API = `${WEREAD_API_URL}/book/bookmarklist`;
+export const BOOK_THOUGHTS_API = `${WEREAD_API_URL}/review/list`;
+export const BOOK_PROGRESS_API = `${WEREAD_API_URL}/book/progress`;
 
