@@ -17,6 +17,7 @@ export interface FormattedHighlight {
   chapterTitle: string;
   createdTime: string;
   text: string;
+  range?: string; // Added optional range property
 }
 
 // Represents a chapter containing multiple highlights
@@ -27,11 +28,13 @@ export interface FormattedChapter {
 
 // Represents a single user thought/note, linked to a highlight
 export interface FormattedThought {
-  bookmarkId: string;
+  bookmarkId: string; // Changed from reviewId for consistency
   chapterTitle: string;
   createdTime: string;
   content: string; // The user's thought/comment
   originalText?: string; // The original highlighted text associated with the thought
+  abstract?: string; // Added optional abstract property
+  reviewId?: string; // Added optional reviewId property
 }
 
 // Represents the structure of the response when fetching highlights
