@@ -1,137 +1,69 @@
 /**
- * 微信读书 → Notion 同步工具 主程序
+ * WeRead to GitHub Issues Sync Tool - Main Entry Point
  */
-
 import dotenv from "dotenv";
 import { parseArgs } from "./core/cli";
-import { syncSingleBook } from "./core/sync/book-sync";
-import { syncAllBooks } from "./core/sync/all-books-sync";
-import { syncAllBooksWithConfig } from "./core/sync/all-books-sync-with-config";
 import { getBrowserCookie } from "./utils/cookie";
-import { refreshSession } from "./api/weread/services";
-import { checkAndMigrateIfNeeded } from "./core/migration";
+import { refreshSession, getBookshelfBooks, getNotebookBooks } from "./api/weread/services";
+import { enhanceBookMetadata } from "./core/formatter";
+import { syncBookToGithub } from "./core/sync/sync-to-github";
 
-// 环境变量文件路径
-const ENV_FILE_PATH = ".env";
-
-// 加载环境变量
-dotenv.config({ path: ENV_FILE_PATH });
+// Load environment variables from .env file
+dotenv.config();
 
 /**
- * 主函数：根据命令行参数执行相应的同步操作
+ * Main function to execute the sync process based on CLI arguments.
  */
 async function main() {
   try {
-    console.log("=== 微信读书 → Notion 同步开始 ===");
+    console.log("=== WeRead → GitHub Issues Sync Started ===");
 
-    // 获取环境变量
-    const NOTION_API_KEY = process.env.NOTION_INTEGRATIONS;
-    const DATABASE_ID = process.env.DATABASE_ID;
-    const CONFIG_DATABASE_ID = process.env.CONFIG_DATABASE_ID;
-
-    // 验证必要的环境变量
-    if (!NOTION_API_KEY) {
-      console.error("错误: 缺少 NOTION_INTEGRATIONS 环境变量");
+    // Validate essential environment variables for GitHub
+    if (!process.env.GITHUB_TOKEN || !process.env.GITHUB_REPO_OWNER || !process.env.GITHUB_REPO_NAME) {
+      console.error("Error: Missing required GitHub environment variables (GITHUB_TOKEN, GITHUB_REPO_OWNER, GITHUB_REPO_NAME).");
       return;
     }
 
-    if (!DATABASE_ID) {
-      console.error("错误: 缺少 DATABASE_ID 环境变量");
-      return;
-    }
+    // Parse command-line arguments
+    const { bookId, syncAll } = parseArgs();
 
-    // 解析命令行参数
-    const { bookId, syncAll, fullSync: cliFullSync } = parseArgs();
-    let fullSync = cliFullSync;
-
-    // 检查数据库版本并执行必要的迁移
-    try {
-      const needsMigration = await checkAndMigrateIfNeeded(
-        NOTION_API_KEY,
-        DATABASE_ID
-      );
-
-      // 如果需要迁移，强制使用全量同步模式
-      if (needsMigration) {
-        console.log("检测到数据库版本变更，将强制使用全量同步模式");
-        fullSync = true;
-      }
-    } catch (error: any) {
-      console.error(`数据库版本检查失败: ${error.message}`);
-      console.log("将继续使用原定同步模式");
-    }
-
-    console.log(`同步模式: ${fullSync ? "全量" : "增量"}`);
-
-    // 获取微信读书Cookie
+    // Get and refresh WeRead cookie/session
     let cookie = getBrowserCookie();
-    console.log("成功加载Cookie");
-
-    // 刷新会话
+    console.log("Cookie loaded successfully.");
     cookie = await refreshSession(cookie);
-    console.log("会话已刷新");
+    console.log("Session has been refreshed.");
 
     if (syncAll) {
-      // 同步所有书籍
-      if (CONFIG_DATABASE_ID) {
-        console.log("检测到配置数据库ID，将使用配置过滤同步");
-        // 加载配置，决定 useIncremental
-        const { loadLibraryConfig } = await import(
-          "./api/notion/config-service"
-        );
-        const config = await loadLibraryConfig(
-          NOTION_API_KEY,
-          CONFIG_DATABASE_ID
-        );
-        let useIncremental = config.syncMode !== "全量";
-        // 命令行 --full-sync 优先级更高
-        if (cliFullSync) useIncremental = false;
-        await syncAllBooksWithConfig(
-          NOTION_API_KEY,
-          DATABASE_ID,
-          cookie,
-          useIncremental,
-          CONFIG_DATABASE_ID
-        );
-      } else {
-        console.log("未配置CONFIG_DATABASE_ID，使用默认同步（所有书籍）");
-        await syncAllBooks(NOTION_API_KEY, DATABASE_ID, cookie, !fullSync);
+      // Sync all books
+      console.log("Fetching all books from bookshelf and notebooks...");
+      const shelfBooks = await getBookshelfBooks(cookie);
+      const notebookBooks = await getNotebookBooks(cookie);
+      const allBooks = await enhanceBookMetadata(cookie, shelfBooks, notebookBooks);
+      
+      console.log(`Found ${allBooks.length} books in total. Starting sync for each...`);
+      for (const book of allBooks) {
+        await syncBookToGithub(cookie, book);
+        // Add a small delay to avoid hitting API rate limits, especially for a large library
+        await new Promise(resolve => setTimeout(resolve, 1500)); 
       }
     } else if (bookId) {
-      // 同步单本书籍
-      let organizeByChapter = false;
-      if (CONFIG_DATABASE_ID) {
-        const { loadLibraryConfig } = await import(
-          "./api/notion/config-service"
-        );
-        const config = await loadLibraryConfig(
-          NOTION_API_KEY,
-          CONFIG_DATABASE_ID
-        );
-        organizeByChapter = config.organizeByChapter === "是";
-      }
-      await syncSingleBook(
-        NOTION_API_KEY,
-        DATABASE_ID,
-        cookie,
-        bookId,
-        !fullSync,
-        organizeByChapter
-      );
+      // Sync a single book
+      // We only have the ID, so we create a minimal book object to pass to the sync function
+      const book = { bookId, title: `Book with ID: ${bookId}` };
+      await syncBookToGithub(cookie, book as any);
     } else {
-      console.log(
-        "请指定要同步的书籍ID (--bookId=xxx) 或使用 --all 同步所有书籍"
-      );
-      console.log("添加 --full-sync 或 -f 参数可进行全量同步（而非增量）");
+      console.log("Usage: Use --all to sync all books, or --bookId=<ID> to sync a single book.");
+      console.log("This script is typically run with --all in an automated environment.");
     }
 
-    console.log("\n=== 同步完成 ===");
+    console.log("\n=== Sync process finished. ===");
   } catch (error: any) {
-    console.error("同步过程中发生错误:", error.message);
+    console.error("An error occurred during the main process:", error.message);
   }
 }
 
-// 运行主函数
+// Run the main function
 main().catch((error) => {
-  console.error("程序执行失败:", error);
+  console.error("Fatal error executing the program:", error);
 });
+
