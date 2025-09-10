@@ -4,7 +4,7 @@
 
 import axios from "axios";
 import {
-  WEREAD_API_URL,
+  WEREAD_BASE_URL,
   NOTEBOOK_API,
   BOOKMARKS_API,
   BOOKSHELF_URL,
@@ -31,8 +31,8 @@ export async function refreshSession(currentCookie: string): Promise<string> {
   console.log("正在刷新微信读书会话...");
 
   const urlsToVisit = [
-    `${WEREAD_API_URL}/`, // 首页
-    `${WEREAD_API_URL}/web/shelf`, // 书架页
+    `${WEREAD_BASE_URL}/`, // 首页
+    `${WEREAD_BASE_URL}/web/shelf`, // 书架页
   ];
 
   let updatedCookie = currentCookie;
@@ -40,7 +40,7 @@ export async function refreshSession(currentCookie: string): Promise<string> {
   for (const url of urlsToVisit) {
     try {
       console.log(`访问: ${url} 以刷新会话...`);
-      const headers = { ...getHeaders(updatedCookie), Referer: WEREAD_API_URL };
+      const headers = { ...getHeaders(updatedCookie), Referer: WEREAD_BASE_URL };
       const response = await axios.get(url, { headers, maxRedirects: 5, });
 
       if (response.headers["set-cookie"]) {
@@ -69,7 +69,7 @@ export async function getNotebookBooks(cookie: string): Promise<any[]> {
     if (response.data && (response.data.books || response.data.notebooks)) {
       const list = response.data.books || response.data.notebooks;
       console.log(`笔记本中共有 ${list.length} 本书`);
-      // 关键修正：笔记本API返回的数据包含book实体，需要解构
+      // 笔记本API返回的数据包含book实体，需要解构
       return list.map((item: any) => item.book || item);
     } else {
        console.log("笔记本API响应正常，但没有书籍数据。");
