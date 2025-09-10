@@ -1,5 +1,5 @@
 /**
- * 微信读书API服务模块 (最终决定版修正)
+ * 微信读书API服务模块 (最终版)
  */
 
 import axios from "axios";
@@ -7,25 +7,24 @@ import {
   WEREAD_BASE_URL,
   NOTEBOOK_API,
   BOOKMARKS_API,
-  BOOKSHELF_URL,
   BOOK_INFO_URL,
   BOOK_PROGRESS_API,
   BOOK_THOUGHTS_API,
 } from "../../config/constants";
-// 关键修正：导入 getNotebookHeaders
-import { getHeaders, getHighlightHeaders, getNotebookHeaders } from "../../utils/http";
-import { updateCookieFromResponse } from "../../utils/cookie";
 import {
-  RawHighlightsData,
-  RawThoughtsData,
-} from "./models";
+  getHeaders,
+  getHighlightHeaders,
+  getNotebookHeaders,
+} from "../../utils/http";
+import { updateCookieFromResponse } from "../../utils/cookie";
+import { RawHighlightsData } from "./models";
 import { getBookProgress } from "./book-progress";
 
-// 重新导出getBookProgress函数
+// 重新导出 getBookProgress 函数
 export { getBookProgress };
 
 /**
- * 刷新微信读书会话 (恢复到原始版本)
+ * 刷新微信读书会话
  */
 export async function refreshSession(currentCookie: string): Promise<string> {
   console.log("正在刷新微信读书会话...");
@@ -41,10 +40,13 @@ export async function refreshSession(currentCookie: string): Promise<string> {
     try {
       console.log(`访问: ${url} 以刷新会话...`);
       const headers = { ...getHeaders(updatedCookie), Referer: WEREAD_BASE_URL };
-      const response = await axios.get(url, { headers, maxRedirects: 5, });
+      const response = await axios.get(url, { headers, maxRedirects: 5 });
 
       if (response.headers["set-cookie"]) {
-        updatedCookie = updateCookieFromResponse(updatedCookie, response.headers["set-cookie"]);
+        updatedCookie = updateCookieFromResponse(
+          updatedCookie,
+          response.headers["set-cookie"]
+        );
       }
     } catch (error: any) {
       console.warn(`刷新会话页面 ${url} 时遇到问题: ${error.message}.`);
@@ -55,32 +57,27 @@ export async function refreshSession(currentCookie: string): Promise<string> {
 }
 
 /**
- * 从微信读书笔记本获取书籍列表 (最终修正版 - 包含调试日志)
+ * 从微信读书笔记本获取书籍列表
  */
 export async function getNotebookBooks(cookie: string): Promise<any[]> {
   console.log("\n=== 从微信读书笔记本获取书籍列表 ===");
   try {
-    // 关键修正：使用专用的 getNotebookHeaders
     const headers = getNotebookHeaders(cookie);
     const response = await axios.get(NOTEBOOK_API, { headers });
-    
-    // 【新增】根据你的建议，添加详细的调试日志
+
     console.log("笔记本API原始响应:", JSON.stringify(response.data, null, 2));
 
-    // 关键修正：兼容 books 和 notebooks 两种返回结构
     if (response.data && (response.data.books || response.data.notebooks)) {
       const list = response.data.books || response.data.notebooks;
       console.log(`笔记本中共有 ${list.length} 本书`);
-      // 关键修正：处理嵌套的 book 对象
       return list.map((item: any) => item.book || item);
     } else {
-       console.log("笔记本API响应正常，但没有书籍数据。");
-       return [];
+      console.log("笔记本API响应正常，但没有书籍数据。");
+      return [];
     }
   } catch (error: any) {
     console.error("获取笔记本列表失败:", error.message);
     if (error.response) {
-      // 【新增】根据你的建议，打印详细的错误响应
       console.error("响应状态码:", error.response.status);
       console.error("响应头:", JSON.stringify(error.response.headers, null, 2));
       console.error("响应体:", JSON.stringify(error.response.data, null, 2));
@@ -90,28 +87,27 @@ export async function getNotebookBooks(cookie: string): Promise<any[]> {
 }
 
 /**
- * 从微信读书书架获取书籍列表 (恢复到原始版本 - 包含调试日志)
+ * 从微信读书书架获取书籍列表 (新版接口：i.weread.qq.com/shelf/sync)
  */
 export async function getBookshelfBooks(cookie: string): Promise<any[]> {
   console.log("\n=== 从微信读书书架获取书籍列表 ===");
+  const url = "https://i.weread.qq.com/shelf/sync";
   try {
-    const headers = getHeaders(cookie);
-    const response = await axios.get(BOOKSHELF_URL, { headers });
+    const headers = getNotebookHeaders(cookie);
+    const response = await axios.post(url, {}, { headers });
 
-    // 【新增】根据你的建议，添加详细的调试日志
     console.log("书架API原始响应:", JSON.stringify(response.data, null, 2));
 
     if (response.data && response.data.books) {
       console.log(`书架中共有 ${response.data.books.length} 本书`);
       return response.data.books;
     } else {
-       console.log("书架API响应正常，但没有书籍数据。");
-       return [];
+      console.log("书架API响应正常，但没有书籍数据。");
+      return [];
     }
   } catch (error: any) {
     console.error("获取书架列表失败:", error.message);
     if (error.response) {
-      // 【新增】根据你的建议，打印详细的错误响应
       console.error("响应状态码:", error.response.status);
       console.error("响应头:", JSON.stringify(error.response.headers, null, 2));
       console.error("响应体:", JSON.stringify(error.response.data, null, 2));
@@ -175,4 +171,3 @@ export async function getBookThoughts(
     return null;
   }
 }
-
