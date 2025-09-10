@@ -49,3 +49,11 @@ export interface ThoughtsResponse {
   hasUpdate: boolean;
 }
 
+// Represents the local sync state for a book (used by file.ts)
+export interface SyncState {
+  bookId: string;
+  lastSyncTime: number;
+  highlightsSynckey: string;
+  thoughtsSynckey: string;
+}
+
