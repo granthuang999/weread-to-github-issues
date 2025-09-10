@@ -1,11 +1,9 @@
 /**
- * HTTP 请求工具 (最终可替换版)
- * 目标：保持最小化、兼容性最高的请求头，避免 401 登录超时
+ * HTTP请求工具 (最终决定版修正)
  */
 
 /**
- * 获取 weread.qq.com 域的标准请求头
- * 用于：书架、书籍信息、书签、进度等 API
+ * 获取用于 weread.qq.com 域的标准请求头
  */
 export function getHeaders(cookie: string): Record<string, string> {
   return {
@@ -15,15 +13,15 @@ export function getHeaders(cookie: string): Record<string, string> {
     Accept: "application/json, text/plain, */*",
     "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8,zh-TW;q=0.7",
     "Accept-Encoding": "gzip, deflate, br, zstd",
-    Referer: "https://weread.qq.com/",
+    "Content-Type": "application/json",
+    Referer: "https://weread.qq.com/web/shelf",
     Origin: "https://weread.qq.com",
   };
 }
 
 /**
- * 获取 i.weread.qq.com 域的请求头
- * 用于：笔记本 API (https://i.weread.qq.com/user/notebooks)
- * ⚠️ 核心：Referer / Origin 必须仍指向 weread.qq.com，而不是 i.weread.qq.com
+ * 【新增】获取专用于 i.weread.qq.com 域的请求头
+ * 核心修正：Referer 和 Origin 指向正确的数据接口域
  */
 export function getNotebookHeaders(cookie: string): Record<string, string> {
   return {
@@ -33,14 +31,15 @@ export function getNotebookHeaders(cookie: string): Record<string, string> {
     Accept: "application/json, text/plain, */*",
     "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8,zh-TW;q=0.7",
     "Accept-Encoding": "gzip, deflate, br, zstd",
-    Referer: "https://weread.qq.com/",
-    Origin: "https://weread.qq.com",
+    // 关键修正
+    Referer: "https://i.weread.qq.com/",
+    Origin: "https://i.weread.qq.com",
   };
 }
 
+
 /**
- * 获取划线 / 笔记请求头
- * 用于：获取某本书的高亮 (reader 页面 API)
+ * 获取微信读书划线请求头 (保持不变)
  */
 export function getHighlightHeaders(
   cookie: string,
@@ -55,5 +54,13 @@ export function getHighlightHeaders(
     "Accept-Encoding": "gzip, deflate, br, zstd",
     Referer: `https://weread.qq.com/web/reader/${bookId}`,
     Origin: "https://weread.qq.com",
+    "sec-ch-ua":
+      '"Google Chrome";v="135", "Not-A.Brand";v="8", "Chromium";v="135"',
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": '"macOS"',
+    "sec-fetch-dest": "empty",
+    "sec-fetch-mode": "cors",
+    "sec-fetch-site": "same-origin",
   };
 }
+
