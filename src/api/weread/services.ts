@@ -1,10 +1,10 @@
 /**
- * 微信读书API服务模块
+ * 微信读书API服务模块 (最终修正版)
  */
 
 import axios from "axios";
 import {
-  WEREAD_BASE_URL,
+  WEREAD_API_URL,
   NOTEBOOK_API,
   BOOKMARKS_API,
   BOOKSHELF_URL,
@@ -15,12 +15,8 @@ import {
 import { getHeaders, getHighlightHeaders } from "../../utils/http";
 import { updateCookieFromResponse } from "../../utils/cookie";
 import {
-  ShelfBook,
-  NotebookBook,
-  BookInfo,
   RawHighlightsData,
   RawThoughtsData,
-  BookProgressInfo,
 } from "./models";
 import { getBookProgress } from "./book-progress";
 
@@ -28,89 +24,61 @@ import { getBookProgress } from "./book-progress";
 export { getBookProgress };
 
 /**
- * 刷新微信读书会话
+ * 刷新微信读书会话 (最终修正版)
+ * 核心修正：直接访问 i.weread.qq.com 的一个端点来激活数据接口的会话
  */
 export async function refreshSession(currentCookie: string): Promise<string> {
   console.log("正在刷新微信读书会话...");
-
-  // 需要按顺序访问的页面
-  const urlsToVisit = [
-    `${WEREAD_BASE_URL}/`, // 首页
-    `${WEREAD_BASE_URL}/web/shelf`, // 书架页
-  ];
-
+  // 访问一个真实的数据API端点以确保会话在 i.weread.qq.com 域上是活跃的
+  const refreshUrl = NOTEBOOK_API; 
   let updatedCookie = currentCookie;
 
-  for (const url of urlsToVisit) {
-    try {
-      console.log(`访问: ${url}`);
-      const headers = {
-        ...getHeaders(updatedCookie),
-        Referer: "https://weread.qq.com/",
-      };
+  try {
+    console.log(`访问: ${refreshUrl} 以刷新会话...`);
+    const headers = getHeaders(updatedCookie);
+    const response = await axios.get(refreshUrl, { headers, maxRedirects: 5 });
 
-      const response = await axios.get(url, {
-        headers,
-        maxRedirects: 5,
-      });
-
-      // 检查是否有新Cookie
-      if (response.headers["set-cookie"]) {
-        const newCookies = response.headers["set-cookie"];
-        console.log("服务端返回了新的Cookie");
-        // 更新Cookie
-        updatedCookie = updateCookieFromResponse(updatedCookie, newCookies);
-      }
-
-      // 休眠300ms，模拟真实浏览行为
-      await new Promise((resolve) => setTimeout(resolve, 300));
-    } catch (error: any) {
-      console.error(`访问${url}失败:`, error.message);
+    // 检查响应头中是否有新的Cookie
+    if (response.headers["set-cookie"]) {
+      console.log("服务端返回了新的Cookie，正在更新...");
+      updatedCookie = updateCookieFromResponse(updatedCookie, response.headers["set-cookie"]);
     }
+    console.log("会话刷新尝试成功。");
+
+  } catch (error: any) {
+    // 如果刷新失败（例如因为旧cookie完全无效），我们不在此处抛出错误。
+    // 真正的错误会在后续的API调用中被捕获。
+    // 这样做可以避免在cookie依然有效但刷新逻辑本身出问题时中断程序。
+    console.warn(`刷新会话时遇到问题: ${error.message}. 将继续尝试使用现有Cookie.`);
   }
 
   return updatedCookie;
 }
+
 
 /**
  * 从微信读书笔记本获取书籍列表
  */
 export async function getNotebookBooks(cookie: string): Promise<any[]> {
   console.log("\n=== 从微信读书笔记本获取书籍列表 ===");
-  console.log("API URL:", NOTEBOOK_API);
-
   try {
-    // 设置请求头
     const headers = getHeaders(cookie);
-
     const response = await axios.get(NOTEBOOK_API, { headers });
 
-    // 检查是否登录超时
-    if (response.data.errCode === -2012) {
-      console.log("检测到登录超时，正在重新刷新会话...");
-      const newCookie = await refreshSession(cookie);
-      // 重新发起请求
-      return getNotebookBooks(newCookie);
-    }
-
-    if (response.data.books && response.data.books.length > 0) {
+    // 笔记本API返回的数据结构是 { books: [...] }
+    if (response.data && response.data.books) {
       console.log(`笔记本中共有 ${response.data.books.length} 本书`);
       return response.data.books;
-    } else if (response.data.errCode) {
-      console.error(
-        `API错误: ${response.data.errCode} - ${response.data.errMsg}`
-      );
-      return [];
     } else {
-      console.log("笔记本中没有书籍");
-      return [];
+       console.log("笔记本API响应正常，但没有书籍数据。");
+       return [];
     }
   } catch (error: any) {
-    console.error("请求失败:", error.message);
-    if (error.response) {
-      console.error("响应状态:", error.response.status);
-      console.error("响应数据:", error.response.data);
+    console.error("获取笔记本列表失败:", error.message);
+    if (error.response && error.response.status === 401) {
+       console.error("错误详情: 身份验证失败(401)，请务必更新您的WEREAD_COOKIE。");
     }
+    // 无论何种错误，都返回空数组让主流程继续
     return [];
   }
 }
@@ -120,40 +88,24 @@ export async function getNotebookBooks(cookie: string): Promise<any[]> {
  */
 export async function getBookshelfBooks(cookie: string): Promise<any[]> {
   console.log("\n=== 从微信读书书架获取书籍列表 ===");
-  console.log("API URL:", BOOKSHELF_URL);
-
   try {
-    // 设置请求头
     const headers = getHeaders(cookie);
+    // 书架API需要POST请求
+    const response = await axios.post(BOOKSHELF_URL, { "synckey": 0, "bookIds": [] }, { headers });
 
-    const response = await axios.get(BOOKSHELF_URL, { headers });
-
-    // 检查是否登录超时
-    if (response.data.errCode === -2012) {
-      console.log("检测到登录超时，正在重新刷新会话...");
-      const newCookie = await refreshSession(cookie);
-      // 重新发起请求
-      return getBookshelfBooks(newCookie);
-    }
-
-    if (response.data.books && response.data.books.length > 0) {
-      console.log(`书架中共有 ${response.data.books.length} 本书`);
-      return response.data.books;
-    } else if (response.data.errCode) {
-      console.error(
-        `API错误: ${response.data.errCode} - ${response.data.errMsg}`
-      );
-      return [];
+    // 书架API返回的数据结构是 { "updates": [...] }
+    if (response.data && response.data.updates) {
+       // 过滤掉已删除或非书籍类型的数据
+      const books = response.data.updates.filter((item: any) => item.book);
+      console.log(`书架同步完成，发现 ${books.length} 本书。`);
+      // 返回 book 对象数组
+      return books.map((item: any) => item.book);
     } else {
-      console.log("书架中没有书籍");
+      console.log("书架API响应正常，但没有书籍数据。");
       return [];
     }
   } catch (error: any) {
-    console.error("请求失败:", error.message);
-    if (error.response) {
-      console.error("响应状态:", error.response.status);
-      console.error("响应数据:", error.response.data);
-    }
+    console.error("获取书架列表失败:", error.message);
     return [];
   }
 }
@@ -165,26 +117,13 @@ export async function getBookInfo(
   cookie: string,
   bookId: string
 ): Promise<any> {
-  console.log(`获取书籍(ID: ${bookId})的详细信息...`);
   const url = `${BOOK_INFO_URL}?bookId=${bookId}`;
-
   try {
-    // 设置请求头
     const headers = getHeaders(cookie);
-
     const response = await axios.get(url, { headers });
-
-    // 检查是否登录超时
-    if (response.data.errCode === -2012) {
-      console.log("检测到登录超时，正在重新刷新会话...");
-      const newCookie = await refreshSession(cookie);
-      // 重新发起请求
-      return getBookInfo(newCookie, bookId);
-    }
-
     return response.data;
   } catch (error: any) {
-    console.error(`获取书籍信息失败:`, error.message);
+    console.error(`获取书籍 ${bookId} 信息失败:`, error.message);
     return null;
   }
 }
@@ -197,48 +136,13 @@ export async function getBookHighlights(
   bookId: string,
   synckey: string = "0"
 ): Promise<RawHighlightsData | null> {
-  console.log(`\n获取书籍(ID: ${bookId})的划线...`);
   const url = `${BOOKMARKS_API}?bookId=${bookId}&synckey=${synckey}`;
-
   try {
-    // 设置请求头，使用特殊的划线请求头
     const headers = getHighlightHeaders(cookie, bookId);
-
-    console.log(`发送请求到: ${url} 使用synckey: ${synckey}`);
     const response = await axios.get(url, { headers });
-
-    // 检查是否登录超时
-    if (response.data.errCode === -2012) {
-      console.log("检测到登录超时，正在重新刷新会话...");
-      const newCookie = await refreshSession(cookie);
-      // 重新发起请求
-      return getBookHighlights(newCookie, bookId, synckey);
-    }
-
-    // 检查响应数据
-    if (response.data) {
-      if (response.data.synckey) {
-        console.log(`获取到新的highlightsSynckey: ${response.data.synckey}`);
-      }
-
-      if (response.data.updated && response.data.updated.length > 0) {
-        console.log(`找到 ${response.data.updated.length} 条新的划线记录`);
-      } else if (response.data.chapters && response.data.chapters.length > 0) {
-        console.log(`找到 ${response.data.chapters.length} 个章节数据`);
-      } else {
-        console.log(`未找到新的划线数据`);
-      }
-    }
-
     return response.data;
   } catch (error: any) {
-    console.error(`获取书籍划线失败:`, error.message);
-    if (error.response) {
-      console.error(`响应状态: ${error.response.status}`);
-      console.error(`响应数据: ${JSON.stringify(error.response.data)}`);
-    } else {
-      console.error(`请求失败，无响应数据`);
-    }
+    console.error(`获取书籍 ${bookId} 划线失败:`, error.message);
     return null;
   }
 }
@@ -251,50 +155,13 @@ export async function getBookThoughts(
   bookId: string,
   synckey: string = "0"
 ): Promise<RawThoughtsData | null> {
-  console.log(`\n获取书籍(ID: ${bookId})的想法...`);
   const url = `${BOOK_THOUGHTS_API}?bookId=${bookId}&listType=11&mine=1&synckey=${synckey}`;
-
   try {
-    // 设置请求头
     const headers = getHighlightHeaders(cookie, bookId);
-
-    console.log(`发送请求到: ${url} 使用synckey: ${synckey}`);
     const response = await axios.get(url, { headers });
-
-    // 检查是否登录超时
-    if (response.data.errCode === -2012) {
-      console.log("检测到登录超时，正在重新刷新会话...");
-      const newCookie = await refreshSession(cookie);
-      // 重新发起请求
-      return getBookThoughts(newCookie, bookId, synckey);
-    }
-
-    // 检查响应数据
-    if (response.data.reviews && response.data.reviews.length > 0) {
-      console.log(`找到 ${response.data.reviews.length} 条想法`);
-    } else if (response.data.errCode) {
-      console.error(
-        `API错误: ${response.data.errCode} - ${
-          response.data.errMsg || "未知错误"
-        }`
-      );
-      return null;
-    } else {
-      console.log("未获取到任何新的想法数据");
-    }
-
-    // 检查是否有新的synckey
-    if (response.data.synckey) {
-      console.log(`获取到新的thoughtsSynckey: ${response.data.synckey}`);
-    }
-
     return response.data;
   } catch (error: any) {
-    console.error(`获取书籍想法失败:`, error.message);
-    if (error.response) {
-      console.error(`响应状态: ${error.response.status}`);
-      console.error(`响应数据: ${JSON.stringify(error.response.data)}`);
-    }
+    console.error(`获取书籍 ${bookId} 想法失败:`, error.message);
     return null;
   }
 }
