@@ -1,6 +1,6 @@
 /**
  * HTML 生成器
- * 负责将书籍列表数据渲染成一个静态HTML页面 (升级版)
+ * 负责将书籍列表数据渲染成一个静态HTML页面 (最终版)
  */
 import { Book } from "../config/types";
 import * as fs from "fs";
@@ -23,10 +23,10 @@ export function generateBookshelfHtml(books: Book[]): string {
       <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
       <style>
         body { font-family: 'Noto Sans SC', sans-serif; }
-        .book-card {
+        .book-cover {
           transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
-        .book-card:hover {
+        .book-cover:hover {
           transform: scale(1.05) translateY(-5px);
           box-shadow: 0 10px 20px rgba(0,0,0,0.2), 0 6px 6px rgba(0,0,0,0.23);
         }
@@ -35,17 +35,13 @@ export function generateBookshelfHtml(books: Book[]): string {
   `;
 
   const bookCards = books.map(book => {
-    // 【升级】更健壮的阅读状态判断
     let statusBadge = '';
-    // finishReading 为 1 代表已读完
     if (book.finishReading === 1) {
         statusBadge = `<span class="absolute top-2 right-2 bg-green-500 text-white text-xs font-semibold px-2 py-1 rounded-full shadow-md">已读</span>`;
     } else {
-        // 其他所有情况（包括没有 finishReading 字段或值为0）都视为在读
         statusBadge = `<span class="absolute top-2 right-2 bg-blue-500 text-white text-xs font-semibold px-2 py-1 rounded-full shadow-md">在读</span>`;
     }
 
-    // 【升级】提取出版年份
     const publishYear = book.publishTime ? new Date(book.publishTime).getFullYear() : '';
 
     return `
@@ -63,7 +59,6 @@ export function generateBookshelfHtml(books: Book[]): string {
       </div>
       <h3 class="text-sm font-bold text-gray-800 dark:text-gray-200 w-36 lg:w-40 truncate" title="${book.title}">${book.title}</h3>
       <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 w-36 lg:w-40 truncate" title="${book.author || '未知作者'}">${book.author || '未知作者'}</p>
-      <!-- 【升级】显示出版社和年份 -->
       <p class="text-xs text-gray-400 dark:text-gray-500 mt-1 w-36 lg:w-40 truncate" title="${book.publisher || ''}">${book.publisher || ''}</p>
       <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">${publishYear}</p>
     </div>
@@ -87,18 +82,5 @@ export function generateBookshelfHtml(books: Book[]): string {
   `;
 
   return `<!DOCTYPE html><html lang="zh-CN">${head}${body}</html>`;
-}
-
-/**
- * 将生成的HTML内容写入到文件
- */
-export function writeHtmlToFile(htmlContent: string, outputPath: string = "book.html"): void {
-  try {
-    const fullPath = path.resolve(process.cwd(), outputPath);
-    fs.writeFileSync(fullPath, htmlContent, 'utf8');
-    console.log(`\n✅ 成功生成书架页面: ${fullPath}`);
-  } catch (error) {
-    console.error("写入HTML文件失败:", error);
-  }
 }
 
