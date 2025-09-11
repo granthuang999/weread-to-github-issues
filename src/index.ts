@@ -5,53 +5,49 @@
 import dotenv from "dotenv";
 import { parseArgs } from "./core/cli";
 import { getBrowserCookie } from "./utils/cookie";
-import { refreshSession, getBookshelfBooks, getNotebookBooks } from "./api/weread/services";
-import { enhanceBookMetadata } from "./core/formatter";
+import { refreshSession, getBookshelfBooks } from "./api/weread/services";
 import { syncBookToGithub } from "./core/sync/sync-to-github";
+import { getAllBookIssuesMap } from "../../api/github/services";
 
 // Load environment variables from .env file
 dotenv.config({ path: ".env" });
 
 /**
- * Main function to execute the sync process based on command-line arguments
+ * Main function to execute the sync process
  */
 async function main() {
   try {
     console.log("=== WeRead → GitHub Issues Sync Started ===");
 
-    const { bookId, syncAll, fullSync } = parseArgs();
+    const { syncAll } = parseArgs();
+
+    if (!syncAll) {
+        console.log("This script currently only supports --all mode.");
+        return;
+    }
+
     let cookie = getBrowserCookie();
     console.log("Cookie loaded successfully.");
 
     cookie = await refreshSession(cookie);
     console.log("Session has been refreshed.");
 
-    if (syncAll) {
-      console.log("Fetching all books from bookshelf...");
-      
-      // 我们现在只从书架HTML获取，因为这是唯一可靠的数据源
-      const shelfBooks = await getBookshelfBooks(cookie);
-      
-      const allBooks = await enhanceBookMetadata(cookie, shelfBooks, []);
+    // --- 新的、更高效的流程 ---
 
-      console.log(`Found ${allBooks.length} books in total. Starting sync for each...`);
+    // 1. 一次性获取所有已存在的Issues
+    const issuesMap = await getAllBookIssuesMap();
 
-      for (let i = 0; i < allBooks.length; i++) {
-        const book = allBooks[i];
-        console.log(`\n[${i + 1}/${allBooks.length}] Syncing book: 《${book.title}》...`);
-        await syncBookToGithub(cookie, book);
-        
-        // 【关键修正】增加2秒延时，防止GitHub API速率限制
-        console.log("Waiting for 2 seconds to avoid rate limiting...");
-        await new Promise(resolve => setTimeout(resolve, 2000)); 
-      }
-    } else if (bookId) {
-      const placeholderBook = { bookId, title: `Book with ID ${bookId}`, author: 'Unknown', cover: '' };
-      await syncBookToGithub(cookie, placeholderBook);
-    } else {
-      console.log(
-        "Please specify a book ID with --bookId=xxx or use --all to sync all books."
-      );
+    // 2. 获取书架上的所有书籍
+    const allBooks = await getBookshelfBooks(cookie);
+
+    console.log(`Found ${allBooks.length} books on your shelf. Comparing with ${issuesMap.size} existing issues...`);
+
+    // 3. 循环处理每一本书
+    for (let i = 0; i < allBooks.length; i++) {
+      const book = allBooks[i];
+      console.log(`\n[${i + 1}/${allBooks.length}] Processing book: 《${book.title}》...`);
+      // 将书籍和已存在的Issues Map传递给同步函数
+      await syncBookToGithub(book, issuesMap);
     }
 
     console.log("\n=== Sync process finished. ===");
