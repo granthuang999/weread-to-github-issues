@@ -1,7 +1,6 @@
-name: Sync Issues to granthuang999.github.io
+name: Sync Issues to Blog Repo
 
 on:
-  workflow_dispatch:   # 手动触发
   issues:
     types: [opened, edited]
 
@@ -9,14 +8,41 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Sync issue to target repo
-        uses: peter-evans/create-issue@v4
+      - name: Checkout source repo
+        uses: actions/checkout@v4
+
+      - name: Prepare issue body file
+        run: |
+          echo "原始仓库: [weread-to-github-issues#${{ github.event.issue.number }}](${{ github.event.issue.html_url }})" > issue-body.md
+          echo "" >> issue-body.md
+          echo "${{ github.event.issue.body }}" >> issue-body.md
+
+      - name: Find existing issue in target repo
+        id: find
+        uses: peter-evans/find-issue@v3
         with:
-          token: ${{ secrets.GH_TOKEN }}   # 需要 PAT，权限至少 repo
+          token: ${{ secrets.GITHUB_TOKEN }}
+          repository: granthuang999/granthuang999.github.io
+          labels: synced-from-weread
+          body-includes: "weread-to-github-issues#${{ github.event.issue.number }}"
+
+      - name: Update issue if exists
+        if: steps.find.outputs.issue-number != ''
+        uses: peter-evans/update-issue-from-file@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          repository: granthuang999/granthuang999.github.io
+          issue-number: ${{ steps.find.outputs.issue-number }}
+          title: ${{ github.event.issue.title }}
+          content-filepath: ./issue-body.md
+          labels: synced-from-weread
+
+      - name: Create issue if not exists
+        if: steps.find.outputs.issue-number == ''
+        uses: peter-evans/create-issue-from-file@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           repository: granthuang999/granthuang999.github.io
           title: ${{ github.event.issue.title }}
-          body: |
-            原始仓库: [weread-to-github-issues#${{ github.event.issue.number }}](${{ github.event.issue.html_url }})
-
-            ${{ github.event.issue.body }}
+          content-filepath: ./issue-body.md
           labels: synced-from-weread
