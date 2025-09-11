@@ -1,6 +1,7 @@
 name: Sync Issues to Blog Repo
 
 on:
+  workflow_dispatch:   # 手动触发
   issues:
     types: [opened, edited]
 
