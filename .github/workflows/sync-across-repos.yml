@@ -3,14 +3,14 @@ name: Sync Issues to granthuang999.github.io
 on:
   workflow_dispatch:   # 手动触发
   issues:
-    types: [opened, edited, reopened, closed]
+    types: [opened, edited]
 
 jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
       - name: Sync issue to target repo
-        uses: peter-evans/create-issue-from-file@v5
+        uses: peter-evans/create-issue@v4
         with:
           token: ${{ secrets.GH_TOKEN }}   # 需要 PAT，权限至少 repo
           repository: granthuang999/granthuang999.github.io
@@ -19,5 +19,4 @@ jobs:
             原始仓库: [weread-to-github-issues#${{ github.event.issue.number }}](${{ github.event.issue.html_url }})
 
             ${{ github.event.issue.body }}
-          labels: |
-            synced-from-weread
+          labels: synced-from-weread
