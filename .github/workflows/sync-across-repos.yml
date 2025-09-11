@@ -11,31 +11,32 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      # 1. 检出当前仓库代码，以便能访问到工作流文件自身
+      # 1. 检出当前仓库代码
       - name: Checkout source repo
         uses: actions/checkout@v4
 
-      # 2. 准备要同步到目标仓库的 issue 内容文件
-      # 在 issue 内容顶部添加一个指回源 issue 的链接
+      # 2. 准备要同步到目标仓库的 issue 内容文件 (已修正)
       - name: Prepare issue body file
+        # 将 issue body 传入环境变量，以避免特殊字符（如 |）导致的 shell 语法错误
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
         run: |
           echo "原始仓库: [${{ github.repository }}#${{ github.event.issue.number }}](${{ github.event.issue.html_url }})" > issue-body.md
           echo "" >> issue-body.md
-          echo "${{ github.event.issue.body }}" >> issue-body.md
+          # 从环境变量中安全地打印 issue body
+          echo "$ISSUE_BODY" >> issue-body.md
 
       # 3. 在目标仓库中查找是否已存在同步过的 issue
-      # 它通过查找一个包含源 issue 链接的特定评论来识别
       - name: Find existing issue in target repo
         id: find
         uses: peter-evans/find-comment@v3
         with:
-          # 使用你创建的 PAT 来获取读取目标仓库的权限
           token: ${{ secrets.CROSS_REPO_TOKEN }}
           repository: granthuang999/granthuang999.github.io
           comment-author: github-actions[bot]
           body-includes: "${{ github.repository }}#${{ github.event.issue.number }}"
 
-      # 4. 如果找到了对应的 issue（即 find 步骤的 comment-id 输出不为空），就更新它
+      # 4. 如果找到了对应的 issue，就更新它
       - name: Update issue if exists
         if: steps.find.outputs.comment-id != ''
         run: |
@@ -43,7 +44,6 @@ jobs:
             --title "${{ github.event.issue.title }}" \
             --body-file ./issue-body.md
         env:
-          # 在 gh CLI 命令中，同样需要使用 PAT 来获取写入权限
           GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           GH_REPO: granthuang999/granthuang999.github.io
 
@@ -52,7 +52,6 @@ jobs:
         if: steps.find.outputs.comment-id == ''
         uses: peter-evans/create-issue-from-file@v5
         with:
-          # 创建 issue 同样需要 PAT
           token: ${{ secrets.CROSS_REPO_TOKEN }}
           repository: granthuang999/granthuang999.github.io
           title: ${{ github.event.issue.title }}
