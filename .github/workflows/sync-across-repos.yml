@@ -1,0 +1,52 @@
+name: Sync Bookshelf Issue to Main Repo
+
+on:
+  workflow_run:
+    # 【关键】当名为 "Sync Bookshelf to This Repo" 的工作流成功完成时触发
+    workflows: ["Sync Bookshelf to This Repo"]
+    types:
+      - completed
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    # 只有当上一个工作流是成功的时候才运行
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    permissions:
+      issues: write
+
+    steps:
+      - name: Get source issue content
+        id: get_source_issue
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.WEREAD_PAT }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const title = "我的微信读书书架 / My WeRead Bookshelf";
+
+            const { data: issues } = await github.rest.search.issuesAndPullRequests({
+              q: `repo:${owner}/${repo} is:issue is:open in:title "${title}"`,
+            });
+            
+            if (issues.items.length === 0) {
+              core.setFailed(`Source issue with title "${title}" not found in ${owner}/${repo}.`);
+              return;
+            }
+            
+            const issue = issues.items[0];
+            console.log(`Found source issue #${issue.number} in ${owner}/${repo}.`);
+            // 将找到的Issue正文作为输出
+            return issue.body;
+      
+      - name: Create or Update Issue in Target Repo
+        uses: peter-evans/create-or-update-issue@v4
+        with:
+          token: ${{ secrets.WEREAD_PAT }}
+          # 【关键】指定你的最终目标仓库
+          repository: granthuang999/granthuang999.github.io
+          title: "我的微信读书书架 / My WeRead Bookshelf"
+          # 【关键】使用上一步获取到的Issue正文来更新目标Issue
+          body: ${{ steps.get_source_issue.outputs.result }}
+          labels: bookshelf, automated
