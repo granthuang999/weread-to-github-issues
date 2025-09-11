@@ -28,17 +28,16 @@ jobs:
           comment-author: github-actions[bot]
           body-includes: "weread-to-github-issues#${{ github.event.issue.number }}"
 
-      # 如果找到了，就更新
+      # 如果找到了，就更新 (已修正)
       - name: Update issue if exists
         if: steps.find.outputs.comment-id != ''
-        uses: peter-evans/update-issue-from-file@v3
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          repository: granthuang999/granthuang999.github.io
-          issue-number: ${{ steps.find.outputs.issue-number }}
-          title: ${{ github.event.issue.title }}
-          content-filepath: ./issue-body.md
-          labels: synced-from-weread
+        run: |
+          gh issue edit ${{ steps.find.outputs.issue-number }} \
+            --title "${{ github.event.issue.title }}" \
+            --body-file ./issue-body.md
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: granthuang999/granthuang999.github.io
 
       # 如果没找到，就新建
       - name: Create issue if not exists
