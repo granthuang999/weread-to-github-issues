@@ -1,5 +1,5 @@
 /**
- * 微信读书API服务模块 (最终策略版)
+ * 微信读书API服务模块 (最终字段修正版)
  */
 
 import axios from "axios";
@@ -70,27 +70,25 @@ export async function getBookshelfBooks(cookie:string): Promise<any[]> {
         const headers = getHeaders(cookie);
         const response = await axios.get(BOOKSHELF_URL, { headers });
 
-        // 确认返回的是HTML
         if (typeof response.data !== 'string' || !response.data.includes('<html')) {
             console.error("书架API未返回HTML页面，返回内容:", response.data);
             return [];
         }
 
-        // 使用正则表达式从HTML中提取__INITIAL_STATE__
         const match = response.data.match(/window\.__INITIAL_STATE__\s*=\s*({.*?});/);
         
         if (match && match[1]) {
             console.log("成功从HTML中提取到 __INITIAL_STATE__");
             const initialState = JSON.parse(match[1]);
             
-            // 尝试从多个可能的字段获取书籍列表
-            const books = initialState?.shelf?.books || initialState?.shelf?.rawBooks || [];
+            // 【最终修正】: 从 `booksAndArchives` 字段获取书籍列表
+            const books = initialState?.shelf?.booksAndArchives || [];
             
             if (books.length > 0) {
                 console.log(`书架中共有 ${books.length} 本书 (从HTML中解析成功)`);
                 return books;
             } else {
-                console.warn("解析成功，但在 __INITIAL_STATE__ 中未找到书籍数据。");
+                console.warn("解析成功，但在 __INITIAL_STATE__ 中未找到 `booksAndArchives` 数据。");
                 console.log("原始 __INITIAL_STATE__.shelf 数据:", JSON.stringify(initialState?.shelf, null, 2));
                 return [];
             }
@@ -102,8 +100,6 @@ export async function getBookshelfBooks(cookie:string): Promise<any[]> {
         console.error("获取并解析书架列表失败:", error.message);
         if (error.response) {
             console.error("响应状态码:", error.response.status);
-            console.error("响应头:", JSON.stringify(error.response.headers, null, 2));
-            // 只打印前500个字符以防日志过长
             const responseData = typeof error.response.data === 'string' ? error.response.data.substring(0, 500) : JSON.stringify(error.response.data);
             console.error("响应体预览:", responseData);
         }
