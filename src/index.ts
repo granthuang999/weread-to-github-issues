@@ -5,7 +5,8 @@
 import dotenv from "dotenv";
 import { getBrowserCookie } from "./utils/cookie";
 import { refreshSession, getBookshelfBooks } from "./api/weread/services";
-import { generateBookshelfHtml } from "./core/html-generator";
+// 关键修正：导入 Markdown 生成器
+import { generateBookshelfMarkdown } from "./core/markdown-generator";
 import { findOrCreateBookshelfIssue, updateBookshelfIssue } from "./api/github/services";
 
 // Load environment variables from .env file
@@ -28,15 +29,15 @@ async function main() {
     const allBooks = await getBookshelfBooks(cookie);
 
     if (allBooks && allBooks.length > 0) {
-      // 2. 如果成功获取到书籍，则生成HTML内容
-      const htmlContent = generateBookshelfHtml(allBooks);
+      // 2. 如果成功获取到书籍，则生成 Markdown 内容
+      const markdownContent = generateBookshelfMarkdown(allBooks);
       
       // 3. 查找或创建一个专用的书架Issue
       const bookshelfIssue = await findOrCreateBookshelfIssue();
 
-      // 4. 如果Issue存在（或创建成功），则用新的HTML内容更新它
+      // 4. 如果Issue存在（或创建成功），则用新的 Markdown 内容更新它
       if (bookshelfIssue && bookshelfIssue.number) {
-        await updateBookshelfIssue(bookshelfIssue.number, htmlContent);
+        await updateBookshelfIssue(bookshelfIssue.number, markdownContent);
       }
 
     } else {
