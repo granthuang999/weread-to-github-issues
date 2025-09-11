@@ -1,8 +1,7 @@
 /**
- * GitHub API 服务模块 (优化版)
+ * GitHub API 服务模块 (单一Issue管理版)
  */
 import { Octokit } from "@octokit/rest";
-import { Book } from "../../config/types";
 
 // 从环境变量中安全地获取配置
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || "";
@@ -12,67 +11,72 @@ const REPO_NAME = process.env.GITHUB_REPO_NAME || "";
 // 初始化Octokit客户端
 const octokit = new Octokit({ auth: GITHUB_TOKEN });
 
+// 定义我们将要管理的那个唯一的Issue的标题
+const BOOKSHELF_ISSUE_TITLE = "我的微信读书书架 / My WeRead Bookshelf";
+
 /**
- * 【全新逻辑】一次性获取仓库中所有由本工具创建的Issues
- * @returns A Map where key is bookId and value is the issue object.
+ * 查找或创建一个专用于展示书架的Issue
+ * @returns The issue object found or created.
  */
-export async function getAllBookIssuesMap(): Promise<Map<string, any>> {
-  const issuesMap = new Map<string, any>();
-  console.log(`Fetching all existing book issues from ${REPO_OWNER}/${REPO_NAME}...`);
+export async function findOrCreateBookshelfIssue(): Promise<any | null> {
+  console.log(`Searching for the dedicated bookshelf issue with title: "${BOOKSHELF_ISSUE_TITLE}"`);
   try {
-    const issues = await octokit.paginate(octokit.issues.listForRepo, {
-      owner: REPO_OWNER,
-      repo: REPO_NAME,
-      state: "open", // 只获取开放的issues
-      labels: "weread", // 只获取带有 'weread' 标签的 issues
+    // 搜索仓库中是否有这个标题的Issue
+    const { data: issues } = await octokit.search.issuesAndPullRequests({
+      q: `repo:${REPO_OWNER}/${REPO_NAME} is:issue is:open in:title "${BOOKSHELF_ISSUE_TITLE}"`,
     });
 
-    for (const issue of issues) {
-      const match = issue.body?.match(/<!-- bookId: (.*?) -->/);
-      if (match && match[1]) {
-        const bookId = match[1];
-        issuesMap.set(bookId, issue);
-      }
+    if (issues.items.length > 0) {
+      const issue = issues.items[0];
+      console.log(`Found existing bookshelf issue #${issue.number}.`);
+      return issue;
+    } else {
+      console.log("Bookshelf issue not found. Creating a new one...");
+      const { data: newIssue } = await octokit.issues.create({
+        owner: REPO_OWNER,
+        repo: REPO_NAME,
+        title: BOOKSHELF_ISSUE_TITLE,
+        body: "📚 This issue is automatically updated with my WeRead bookshelf.",
+        labels: ["bookshelf", "automated"],
+      });
+      console.log(`Successfully created new bookshelf issue #${newIssue.number}.`);
+      return newIssue;
     }
-    console.log(`Found ${issuesMap.size} existing book issues.`);
-    return issuesMap;
   } catch (error: any) {
-    console.error("Error fetching repository issues:", error.message);
-    // 如果获取失败，返回一个空Map，程序将尝试创建新Issues
-    return issuesMap;
+    console.error("Error finding or creating the bookshelf issue:", error.message);
+    return null;
   }
 }
 
 /**
- * 为一本书创建一个新的Issue
+ * 用最新的HTML内容更新书架Issue
+ * @param issueNumber The number of the issue to update.
+ * @param htmlContent The full HTML content of the bookshelf.
  */
-export async function createNewIssueForBook(book: Book): Promise<number | null> {
-  try {
-    const body = `
-### 📖 《${book.title}》
-**作者**: ${book.author || "未知"}
+export async function updateBookshelfIssue(issueNumber: number, htmlContent: string): Promise<void> {
+    console.log(`Updating issue #${issueNumber} with the latest bookshelf...`);
+    try {
+        // GitHub Issue body a markdown, we can embed HTML in it.
+        // For better display, we wrap it in a details tag so it's collapsible.
+        const body = `
+<details>
+<summary>点击展开/折叠我的书架 (更新于 ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })})</summary>
 
----
-*此 Issue 由 WeRead Sync 工具自动创建。*
-<!-- bookId: ${book.bookId} -->
-    `;
+${htmlContent}
 
-    const response = await octokit.issues.create({
-      owner: REPO_OWNER,
-      repo: REPO_NAME,
-      title: `读书笔记：${book.title}`,
-      body: body,
-      labels: ["weread", "reading-notes"], // 自动打上标签
-    });
+</details>
 
-    if (response.status === 201) {
-      console.log(`Successfully created new issue #${response.data.number} for book: ${book.title}`);
-      return response.data.number;
+*由 WeRead Sync 工具自动更新。*
+`;
+        await octokit.issues.update({
+            owner: REPO_OWNER,
+            repo: REPO_NAME,
+            issue_number: issueNumber,
+            body: body,
+        });
+        console.log(`✅ Successfully updated issue #${issueNumber}.`);
+    } catch (error: any) {
+        console.error(`Error updating issue #${issueNumber}:`, error.message);
     }
-    return null;
-  } catch (error: any) {
-    console.error(`Error creating issue for book "${book.title}":`, error.message);
-    return null;
-  }
 }
 
