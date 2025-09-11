@@ -1,57 +1,74 @@
+# 工作流名称
 name: Sync Issues to Blog Repo
 
+# 工作流的触发条件
 on:
-  # 允许手动触发
+  # 允许在 GitHub 网站上手动触发此工作流
   workflow_dispatch:
-  # 当源仓库的 issue 被创建或编辑时触发
+  # 当此仓库中的 issue 被创建或编辑时自动触发
   issues:
     types: [opened, edited]
 
+# 工作流包含的任务
 jobs:
   sync:
+    # 指定运行环境为最新版的 Ubuntu
     runs-on: ubuntu-latest
+    # 定义任务中的各个步骤
     steps:
-      # 1. 检出当前仓库代码
+      # 第 1 步：检出（下载）当前仓库的代码
+      # 这是为了让运行环境可以访问到仓库中的文件
       - name: Checkout source repo
         uses: actions/checkout@v4
 
-      # 2. 准备要同步到目标仓库的 issue 内容文件 (已修正)
+      # 第 2 步：准备要写入目标仓库的 issue 内容
+      # 这个步骤解决了 issue 内容中包含特殊字符（如 |）导致的语法错误
       - name: Prepare issue body file
-        # 将 issue body 传入环境变量，以避免特殊字符（如 |）导致的 shell 语法错误
+        # 将 issue 的正文内容传递给一个环境变量，这是最安全的处理方式
         env:
           ISSUE_BODY: ${{ github.event.issue.body }}
         run: |
+          # 创建一个名为 issue-body.md 的临时文件
+          # 在文件顶部添加一个指回原始 issue 的链接，方便溯源
           echo "原始仓库: [${{ github.repository }}#${{ github.event.issue.number }}](${{ github.event.issue.html_url }})" > issue-body.md
+          # 添加一个空行
           echo "" >> issue-body.md
-          # 从环境变量中安全地打印 issue body
+          # 从环境变量中将 issue 的正文内容追加到文件中
           echo "$ISSUE_BODY" >> issue-body.md
 
-      # 3. 在目标仓库中查找是否已存在同步过的 issue
+      # 第 3 步：在目标仓库中查找是否已存在同步过的 issue
+      # 它通过查找一个包含特定溯源链接的评论来判断 issue 是否已存在
       - name: Find existing issue in target repo
         id: find
         uses: peter-evans/find-comment@v3
         with:
+          # 关键：使用你创建的 CROSS_REPO_TOKEN 来获取访问目标仓库的权限
           token: ${{ secrets.CROSS_REPO_TOKEN }}
           repository: granthuang999/granthuang999.github.io
           comment-author: github-actions[bot]
           body-includes: "${{ github.repository }}#${{ github.event.issue.number }}"
 
-      # 4. 如果找到了对应的 issue，就更新它
+      # 第 4 步：如果找到了，就更新已存在的 issue
+      # "if" 条件判断上一步（id=find）是否找到了评论
       - name: Update issue if exists
         if: steps.find.outputs.comment-id != ''
         run: |
+          # 使用 GitHub CLI (gh) 命令来编辑 issue
           gh issue edit ${{ steps.find.outputs.issue-number }} \
             --title "${{ github.event.issue.title }}" \
             --body-file ./issue-body.md
         env:
+          # 关键：执行 gh 命令同样需要提供有权限的 TOKEN
           GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           GH_REPO: granthuang999/granthuang999.github.io
 
-      # 5. 如果没有找到，就新建一个 issue
+      # 第 5 步：如果没有找到，就在目标仓库中创建一个新的 issue
+      # "if" 条件判断上一步是否没有找到评论
       - name: Create issue if not exists
         if: steps.find.outputs.comment-id == ''
         uses: peter-evans/create-issue-from-file@v5
         with:
+          # 关键：创建 issue 也需要使用有权限的 TOKEN
           token: ${{ secrets.CROSS_REPO_TOKEN }}
           repository: granthuang999/granthuang999.github.io
           title: ${{ github.event.issue.title }}
