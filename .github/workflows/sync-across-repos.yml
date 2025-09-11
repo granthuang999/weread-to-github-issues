@@ -1,6 +1,7 @@
 name: Sync Bookshelf Issue to Main Repo
 
 on:
+  workflow_dispatch:
   workflow_run:
     # 【关键】当名为 "Sync Bookshelf to This Repo" 的工作流成功完成时触发
     workflows: ["Sync Bookshelf to This Repo"]
