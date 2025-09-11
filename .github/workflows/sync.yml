@@ -1,37 +1,51 @@
-name: WeRead to GitHub Issues Sync
+name: WeRead Bookshelf Sync
 
 on:
   schedule:
-    # Runs at 00:00 UTC every day, which is 8:00 AM Beijing Time
+    # 北京时间每天早上8点运行
     - cron: "0 0 * * *"
-  # Allows you to run this workflow manually from the Actions tab
+  # 允许从Actions标签手动触发
   workflow_dispatch:
 
 jobs:
   sync:
     runs-on: ubuntu-latest
-
     permissions:
-      contents: write # Important: Give the workflow permission to write to the repo (i.e., create/update issues)
+      # 必须有写入权限才能提交回仓库
+      contents: write
 
     steps:
-      - name: Checkout repository code
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js environment
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20" # Use a stable version of Node.js
+          node-version: "20"
           cache: "npm"
 
       - name: Install dependencies
-        run: npm install # CHANGED: Use 'install' instead of 'ci' to resolve dependency mismatches
+        run: npm install
 
-      - name: Run the sync script
-        run: npm run sync # This executes "ts-node src/index.ts --all"
+      - name: Run sync and generate HTML
+        run: npm run sync
         env:
           WEREAD_COOKIE: ${{ secrets.WEREAD_COOKIE }}
-          GITHUB_TOKEN: ${{ secrets.WEREAD_PAT }} # Use a custom name for the Personal Access Token
+          # 以下部分暂时不再需要，但保留以备将来使用
+          GITHUB_TOKEN: ${{ secrets.WEREAD_PAT }} 
           GITHUB_REPO_OWNER: ${{ github.repository_owner }}
           GITHUB_REPO_NAME: ${{ github.event.repository.name }}
 
+      # 【新增】提交生成的 book.html 文件
+      - name: Commit and push book.html
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add book.html
+          # 检查是否有文件更改需要提交
+          if git diff --staged --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Update bookshelf html [skip ci]"
+            git push
+          fi
