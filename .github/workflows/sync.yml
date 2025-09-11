@@ -11,7 +11,7 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     permissions:
-      # 必须有写入权限才能提交回仓库
+      # 必须有contents写入权限，以防将来需要提交文件
       contents: write
       # 必须有issues写入权限
       issues: write
@@ -29,13 +29,13 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Run sync
+      - name: Run sync to target repository
         run: npm run sync
         env:
           WEREAD_COOKIE: ${{ secrets.WEREAD_COOKIE }}
           WEREAD_PAT: ${{ secrets.WEREAD_PAT }}
-          # 【关键修正】: GITHUB_REPO_OWNER 仍然是当前仓库的所有者
-          GITHUB_REPO_OWNER: ${{ github.repository_owner }}
-          # 【关键修正】: GITHUB_REPO_NAME 现在从一个新的Secret读取，如果未设置，则默认为当前仓库名
-          GITHUB_REPO_NAME: ${{ secrets.TARGET_REPO_NAME || github.event.repository.name }}
+          # 【关键修正】: GITHUB_REPO_OWNER 仍然是你的用户名
+          GITHUB_REPO_OWNER: 'granthuang999'
+          # 【关键修正】: GITHUB_REPO_NAME 现在直接指定为你的目标仓库
+          GITHUB_REPO_NAME: 'granthuang999.github.io'
 
