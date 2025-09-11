@@ -1,30 +1,21 @@
 /**
- * WeRead to GitHub Issues Sync Tool (Main Program)
+ * WeRead to HTML Bookshelf Tool (Main Program)
  */
 
 import dotenv from "dotenv";
-import { parseArgs } from "./core/cli";
 import { getBrowserCookie } from "./utils/cookie";
 import { refreshSession, getBookshelfBooks } from "./api/weread/services";
-import { syncBookToGithub } from "./core/sync/sync-to-github";
-import { getAllBookIssuesMap } from "./api/github/services";
+import { generateBookshelfHtml, writeHtmlToFile } from "./core/html-generator";
 
 // Load environment variables from .env file
 dotenv.config({ path: ".env" });
 
 /**
- * Main function to execute the sync process
+ * Main function to execute the sync and generation process
  */
 async function main() {
   try {
-    console.log("=== WeRead → GitHub Issues Sync Started ===");
-
-    const { syncAll } = parseArgs();
-
-    if (!syncAll) {
-        console.log("This script currently only supports --all mode.");
-        return;
-    }
+    console.log("=== WeRead Bookshelf HTML Generator Started ===");
 
     let cookie = getBrowserCookie();
     console.log("Cookie loaded successfully.");
@@ -32,27 +23,22 @@ async function main() {
     cookie = await refreshSession(cookie);
     console.log("Session has been refreshed.");
 
-    // --- 新的、更高效的流程 ---
-
-    // 1. 一次性获取所有已存在的Issues
-    const issuesMap = await getAllBookIssuesMap();
-
-    // 2. 获取书架上的所有书籍
+    // 1. 获取书架上的所有书籍
     const allBooks = await getBookshelfBooks(cookie);
 
-    console.log(`Found ${allBooks.length} books on your shelf. Comparing with ${issuesMap.size} existing issues...`);
-
-    // 3. 循环处理每一本书
-    for (let i = 0; i < allBooks.length; i++) {
-      const book = allBooks[i];
-      console.log(`\n[${i + 1}/${allBooks.length}] Processing book: 《${book.title}》...`);
-      // 将书籍和已存在的Issues Map传递给同步函数
-      await syncBookToGithub(book, issuesMap);
+    if (allBooks && allBooks.length > 0) {
+      // 2. 如果成功获取到书籍，则生成HTML
+      const htmlContent = generateBookshelfHtml(allBooks);
+      
+      // 3. 将HTML写入文件
+      writeHtmlToFile(htmlContent, "book.html");
+    } else {
+      console.log("未能获取到任何书籍，跳过HTML生成。");
     }
 
-    console.log("\n=== Sync process finished. ===");
+    console.log("\n=== Process finished. ===");
   } catch (error: any) {
-    console.error("An error occurred during the sync process:", error.message);
+    console.error("An error occurred during the process:", error.message);
   }
 }
 
