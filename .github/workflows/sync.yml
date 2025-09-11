@@ -2,19 +2,15 @@ name: WeRead Bookshelf Sync
 
 on:
   schedule:
-    # 北京时间每天早上8点运行
     - cron: "0 0 * * *"
-  # 允许从Actions标签手动触发
   workflow_dispatch:
 
 jobs:
-  sync:
+  # 第一步：生成 Markdown 内容
+  generate-markdown:
     runs-on: ubuntu-latest
-    permissions:
-      # 必须有contents写入权限，以防将来需要提交文件
-      contents: write
-      # 必须有issues写入权限
-      issues: write
+    outputs:
+      bookshelf_md: ${{ steps.extract_md.outputs.markdown }}
 
     steps:
       - name: Checkout code
@@ -29,13 +25,47 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Run sync to target repository
+      - name: Run script to generate markdown
+        id: run_script
         run: npm run sync
         env:
           WEREAD_COOKIE: ${{ secrets.WEREAD_COOKIE }}
-          WEREAD_PAT: ${{ secrets.WEREAD_PAT }}
-          # 【关键修正】: GITHUB_REPO_OWNER 仍然是你的用户名
-          GITHUB_REPO_OWNER: 'granthuang999'
-          # 【关键修正】: GITHUB_REPO_NAME 现在直接指定为你的目标仓库
-          GITHUB_REPO_NAME: 'granthuang999.github.io'
+
+      - name: Extract Markdown from logs
+        id: extract_md
+        run: |
+          LOG_CONTENT="${{ steps.run_script.outputs.stdout }}"
+          # 使用awk从特殊标记中提取Markdown内容
+          MARKDOWN_BODY=$(echo "$LOG_CONTENT" | awk '/---START_BOOKSHELF_MARKDOWN---/{flag=1; next} /---END_BOOKSHELF_MARKDOWN---/{flag=0} flag')
+          # 将多行字符串转换为GitHub Actions输出需要的单行格式
+          MARKDOWN_BODY="${MARKDOWN_BODY//'%'/'%25'}"
+          MARKDOWN_BODY="${MARKDOWN_BODY//$'\n'/'%0A'}"
+          MARKDOWN_BODY="${MARKDOWN_BODY//$'\r'/'%0D'}"
+          echo "markdown=$MARKDOWN_BODY" >> $GITHUB_OUTPUT
+
+  # 第二步：将 Markdown 同步到目标仓库的Issue
+  sync-to-issue:
+    runs-on: ubuntu-latest
+    needs: generate-markdown # 依赖第一步
+    permissions:
+      issues: write # 需要写Issue的权限
+
+    steps:
+      - name: Find or Create Issue and Update
+        uses: peter-evans/find-comment@v3
+        with:
+          # 使用你的PAT进行授权，确保有跨仓库权限
+          token: ${{ secrets.WEREAD_PAT }}
+          repository: granthuang999/granthuang999.github.io
+          issue-title: "我的微信读书书架 / My WeRead Bookshelf"
+          # 这是Issue的正文内容，我们直接使用上一步的输出
+          body: |
+            ${{ needs.generate-markdown.outputs.bookshelf_md }}
+            
+            ---
+            *Last updated: ${{ env.SYNC_TIME }}.*
+          create-if-not-exists: true # 如果Issue不存在，则自动创建
+
+      - name: Set Sync Time
+        run: echo "SYNC_TIME=$(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_ENV
 
