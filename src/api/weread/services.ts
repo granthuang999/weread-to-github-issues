@@ -1,18 +1,17 @@
 /**
- * 微信读书API服务模块 (最终决定版修正)
+ * 微信读书API服务模块 (最终策略版)
  */
 
 import axios from "axios";
 import {
   WEREAD_BASE_URL,
-  NOTEBOOK_API,
+  NOTEBOOK_API, // Note: This will no longer be used for getting the book list
   BOOKMARKS_API,
   BOOKSHELF_URL,
   BOOK_INFO_URL,
   BOOK_PROGRESS_API,
   BOOK_THOUGHTS_API,
 } from "../../config/constants";
-// 关键修正：导入 getNotebookHeaders
 import { getHeaders, getHighlightHeaders, getNotebookHeaders } from "../../utils/http";
 import { updateCookieFromResponse } from "../../utils/cookie";
 import {
@@ -25,14 +24,14 @@ import { getBookProgress } from "./book-progress";
 export { getBookProgress };
 
 /**
- * 刷新微信读书会话 (恢复到原始版本)
+ * 刷新微信读书会话
  */
 export async function refreshSession(currentCookie: string): Promise<string> {
   console.log("正在刷新微信读书会话...");
 
   const urlsToVisit = [
-    `${WEREAD_BASE_URL}/`, // 首页
-    `${WEREAD_BASE_URL}/web/shelf`, // 书架页
+    `${WEREAD_BASE_URL}/`, 
+    BOOKSHELF_URL,
   ];
 
   let updatedCookie = currentCookie;
@@ -55,60 +54,61 @@ export async function refreshSession(currentCookie: string): Promise<string> {
 }
 
 /**
- * 从微信读书笔记本获取书籍列表 (最终修正版)
- * 采用您提供的正确逻辑
+ * 【已移除】不再使用此函数获取书籍列表
  */
 export async function getNotebookBooks(cookie: string): Promise<any[]> {
-  console.log("\n=== 从微信读书笔记本获取书籍列表 ===");
-  try {
-    // 关键修正：使用专用的 getNotebookHeaders
-    const headers = getNotebookHeaders(cookie);
-    const response = await axios.get(NOTEBOOK_API, { headers });
-    
-    // 关键修正：兼容 books 和 notebooks 两种返回结构
-    if (response.data && (response.data.books || response.data.notebooks)) {
-      const list = response.data.books || response.data.notebooks;
-      console.log(`笔记本中共有 ${list.length} 本书`);
-      // 关键修正：处理嵌套的 book 对象
-      return list.map((item: any) => item.book || item);
-    } else {
-       console.log("笔记本API响应正常，但没有书籍数据。");
-       return [];
-    }
-  } catch (error: any) {
-    console.error("获取笔记本列表失败:", error.message);
-    if (error.response && error.response.status === 401) {
-       console.error("错误详情: 身份验证失败(401)，请确认 Cookie 或 headers。");
-    }
+    console.log("`getNotebookBooks` 已被弃用，将返回空数组。");
     return [];
-  }
 }
 
 /**
- * 从微信读书书架获取书籍列表 (最终修正版 - 解析HTML)
+ * 从微信读书书架获取书籍列表 (全新逻辑 - 从HTML解析)
  */
-export async function getBookshelfBooks(cookie: string): Promise<any[]> {
-  console.log("\n=== 从微信读书书架获取书籍列表 ===");
-  try {
-    const headers = getHeaders(cookie);
-    const response = await axios.get(BOOKSHELF_URL, { headers });
-    
-    // 关键修正：书架API现在返回HTML，我们需要从中解析数据
-    const html = response.data;
-    const match = html.match(/window\.__INITIAL_STATE__\s*=\s*({.*?});/);
-    if (match && match[1]) {
-      const initialState = JSON.parse(match[1]);
-      const books = initialState?.shelf?.books || initialState?.shelf?.rawBooks || [];
-      console.log(`书架中共有 ${books.length} 本书 (从HTML中解析)`);
-      return books;
-    } else {
-       console.log("书架API响应正常，但未能从HTML中解析出书籍数据。");
-       return [];
+export async function getBookshelfBooks(cookie:string): Promise<any[]> {
+    console.log("\n=== 从微信读书书架获取书籍列表 (HTML解析模式) ===");
+    try {
+        const headers = getHeaders(cookie);
+        const response = await axios.get(BOOKSHELF_URL, { headers });
+
+        // 确认返回的是HTML
+        if (typeof response.data !== 'string' || !response.data.includes('<html')) {
+            console.error("书架API未返回HTML页面，返回内容:", response.data);
+            return [];
+        }
+
+        // 使用正则表达式从HTML中提取__INITIAL_STATE__
+        const match = response.data.match(/window\.__INITIAL_STATE__\s*=\s*({.*?});/);
+        
+        if (match && match[1]) {
+            console.log("成功从HTML中提取到 __INITIAL_STATE__");
+            const initialState = JSON.parse(match[1]);
+            
+            // 尝试从多个可能的字段获取书籍列表
+            const books = initialState?.shelf?.books || initialState?.shelf?.rawBooks || [];
+            
+            if (books.length > 0) {
+                console.log(`书架中共有 ${books.length} 本书 (从HTML中解析成功)`);
+                return books;
+            } else {
+                console.warn("解析成功，但在 __INITIAL_STATE__ 中未找到书籍数据。");
+                console.log("原始 __INITIAL_STATE__.shelf 数据:", JSON.stringify(initialState?.shelf, null, 2));
+                return [];
+            }
+        } else {
+            console.error("书架API响应正常，但未能从HTML中用正则表达式匹配到 __INITIAL_STATE__ 数据。");
+            return [];
+        }
+    } catch (error: any) {
+        console.error("获取并解析书架列表失败:", error.message);
+        if (error.response) {
+            console.error("响应状态码:", error.response.status);
+            console.error("响应头:", JSON.stringify(error.response.headers, null, 2));
+            // 只打印前500个字符以防日志过长
+            const responseData = typeof error.response.data === 'string' ? error.response.data.substring(0, 500) : JSON.stringify(error.response.data);
+            console.error("响应体预览:", responseData);
+        }
+        return [];
     }
-  } catch (error: any) {
-    console.error("获取书架列表失败:", error.message);
-    return [];
-  }
 }
 
 
