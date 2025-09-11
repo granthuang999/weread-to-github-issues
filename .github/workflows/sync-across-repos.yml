@@ -15,7 +15,7 @@ jobs:
       issues: write
 
     steps:
-      # 第1步：获取源仓库Issue的内容 (已修正)
+      # 第1步：获取源仓库Issue的内容
       - name: Get source issue content
         id: get_source_issue
         uses: actions/github-script@v7
@@ -37,23 +37,27 @@ jobs:
             
             const issue = issues.items[0];
             console.log(`在 ${owner}/${repo} 中找到源Issue #${issue.number}。`);
-            
-            // 【关键修改】: 不要使用 return, 它会返回JSON字符串。
-            // 使用 core.setOutput 来创建一个名为 'body' 的原始文本输出。
             core.setOutput('body', issue.body);
       
       # 第2步：在目标仓库中创建或更新Issue (已修正)
       - name: Create or Update Issue in Target Repo
         env:
           GH_TOKEN: ${{ secrets.WEREAD_PAT }}
-          # 【关键修改】: 引用新的、正确的原始文本输出 'body'。
-          # 此前是 'steps.get_source_issue.outputs.result'
           ISSUE_BODY: ${{ steps.get_source_issue.outputs.body }}
           ISSUE_TITLE: "我的微信读书书架 / My WeRead Bookshelf"
           TARGET_REPO: granthuang999/granthuang999.github.io
         run: |
+          # 将原始的Issue正文写入文件
           echo "$ISSUE_BODY" > body.md
+          
+          # 【新增】为确保格式正确，先追加一个空行
+          echo "" >> body.md
+          
+          # 【新增】追加您指定的完整内容到文件的最后一行
+          # 使用单引号''可以防止内容中的特殊字符被Shell解析
+          echo '##{"slug": "weread-shelf-sync", "keywords": "weread，微信读书，微信读书同步，个人书单，中年书单", "description": "通过https://github.com/sailor0913/weread-to-notion得到启发把微信读书的状态同步到github issues，然后渲染生成本页面，因为原来的api已经修改了权限，导致现在无法获取读书划线和评论，只能获取书籍的基本信息和读书状态，也欢迎大家在本页面下留言讨论，谢谢"}' >> body.md
 
+          # 后续的创建/更新逻辑保持不变
           issue_number=$(gh issue list -R "$TARGET_REPO" --search "in:title \"$ISSUE_TITLE\"" --json number -q '.[0].number')
 
           if [ -n "$issue_number" ]; then
