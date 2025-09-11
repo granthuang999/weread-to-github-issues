@@ -1,4 +1,4 @@
-name: WeRead Bookshelf Sync
+name: Sync Bookshelf to This Repo
 
 on:
   schedule:
@@ -6,9 +6,11 @@ on:
   workflow_dispatch:
 
 jobs:
-  # 第一步：生成 Markdown 文件并将其作为产物上传
-  generate-markdown:
+  sync:
     runs-on: ubuntu-latest
+    permissions:
+      issues: write # 只需要写Issue的权限
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -22,40 +24,11 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Run script to generate markdown file
+      - name: Run sync
         run: npm run sync
         env:
           WEREAD_COOKIE: ${{ secrets.WEREAD_COOKIE }}
-
-      - name: Upload bookshelf artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: bookshelf-markdown
-          path: bookshelf.md
-
-  # 第二步：下载产物并将 Markdown 同步到目标仓库的Issue
-  sync-to-issue:
-    runs-on: ubuntu-latest
-    needs: generate-markdown # 依赖第一步
-    permissions:
-      issues: write # 需要写Issue的权限
-
-    steps:
-      - name: Download bookshelf artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: bookshelf-markdown
-
-      - name: Create or Update Issue in Target Repo
-        uses: peter-evans/create-or-update-issue@v4
-        with:
-          # 使用你的PAT进行授权，确保有跨仓库权限
-          token: ${{ secrets.WEREAD_PAT }}
-          # 【关键】指定你的最终目标仓库
-          repository: granthuang999/granthuang999.github.io
-          title: "我的微信读书书架 / My WeRead Bookshelf"
-          # 从文件中读取Issue的正文
-          body-path: bookshelf.md
-          # 自动为Issue打上标签
-          labels: bookshelf, automated
+          WEREAD_PAT: ${{ secrets.WEREAD_PAT }}
+          # 【关键】GITHUB_REPOSITORY 会由Actions自动提供
+          GITHUB_REPOSITORY: ${{ github.repository }}
 
