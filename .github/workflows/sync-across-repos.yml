@@ -39,7 +39,7 @@ jobs:
             console.log(`在 ${owner}/${repo} 中找到源Issue #${issue.number}。`);
             core.setOutput('body', issue.body);
       
-      # 第2步：在目标仓库中创建或更新Issue (已修正)
+      # 第2步：在目标仓库中创建或更新Issue
       - name: Create or Update Issue in Target Repo
         env:
           GH_TOKEN: ${{ secrets.WEREAD_PAT }}
@@ -50,12 +50,11 @@ jobs:
           # 将原始的Issue正文写入文件
           echo "$ISSUE_BODY" > body.md
           
-          # 【新增】为确保格式正确，先追加一个空行
+          # 追加一个空行用于格式分隔
           echo "" >> body.md
           
-          # 【新增】追加您指定的完整内容到文件的最后一行
-          # 使用单引号''可以防止内容中的特殊字符被Shell解析
-          echo '##{"slug": "weread-shelf-sync", "keywords": "weread，微信读书，微信读书同步，个人书单，中年书单", "description": "通过https://github.com/sailor0913/weread-to-notion得到启发把微信读书的状态同步到github issues，然后渲染生成本页面，因为原来的api已经修改了权限，导致现在无法获取读书划线和评论，只能获取书籍的基本信息和读书状态，也欢迎大家在本页面下留言讨论，谢谢"}' >> body.md
+          # 【修正】使用 echo -n 来确保这是文件的最后一行，不会额外添加空行
+          echo -n '##{"slug": "weread-shelf-sync", "keywords": "weread，微信读书，微信读书同步，个人书单，中年书单", "description": "通过https://github.com/sailor0913/weread-to-notion得到启发把微信读书的状态同步到github issues，然后渲染生成本页面，因为原来的api已经修改了权限，导致现在无法获取读书划线和评论，只能获取书籍的基本信息和读书状态，也欢迎大家在本页面下留言讨论，谢谢"}' >> body.md
 
           # 后续的创建/更新逻辑保持不变
           issue_number=$(gh issue list -R "$TARGET_REPO" --search "in:title \"$ISSUE_TITLE\"" --json number -q '.[0].number')
