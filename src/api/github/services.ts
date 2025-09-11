@@ -5,7 +5,7 @@ import { Octokit } from "@octokit/rest";
 
 // 从环境变量中安全地获取配置
 const GITHUB_TOKEN = process.env.WEREAD_PAT || "";
-// 【关键】: 不再需要REPO_OWNER和REPO_NAME，Octokit会自动从环境中获取
+// 【关键】: 从Actions自动提供的变量中获取仓库信息
 const REPO_DETAILS = process.env.GITHUB_REPOSITORY || ""; // e.g., "granthuang999/weread-to-github-issues"
 const [REPO_OWNER, REPO_NAME] = REPO_DETAILS.split('/');
 
