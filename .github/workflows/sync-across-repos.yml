@@ -3,7 +3,6 @@ name: Sync Bookshelf Issue to Main Repo
 on:
   workflow_dispatch:
   workflow_run:
-    # 触发条件：当名为 "Sync Bookshelf to This Repo" 的工作流成功完成时
     workflows: ["Sync Bookshelf to This Repo"]
     types:
       - completed
@@ -11,13 +10,12 @@ on:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    # 仅当触发工作流的运行结果是 'success' (成功) 时，才执行此任务
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     permissions:
       issues: write
 
     steps:
-      # 第1步：获取源仓库Issue的内容（此步骤保持不变）
+      # 第1步：获取源仓库Issue的内容 (已修正)
       - name: Get source issue content
         id: get_source_issue
         uses: actions/github-script@v7
@@ -39,33 +37,29 @@ jobs:
             
             const issue = issues.items[0];
             console.log(`在 ${owner}/${repo} 中找到源Issue #${issue.number}。`);
-            return issue.body;
+            
+            // 【关键修改】: 不要使用 return, 它会返回JSON字符串。
+            // 使用 core.setOutput 来创建一个名为 'body' 的原始文本输出。
+            core.setOutput('body', issue.body);
       
       # 第2步：在目标仓库中创建或更新Issue (已修正)
       - name: Create or Update Issue in Target Repo
-        # 使用环境变量来传递数据，确保安全和稳定
         env:
-          # 提供有权限的PAT用于gh命令的认证
           GH_TOKEN: ${{ secrets.WEREAD_PAT }}
-          # 从上一步获取的Issue正文
-          ISSUE_BODY: ${{ steps.get_source_issue.outputs.result }}
-          # 定义Issue的标题
+          # 【关键修改】: 引用新的、正确的原始文本输出 'body'。
+          # 此前是 'steps.get_source_issue.outputs.result'
+          ISSUE_BODY: ${{ steps.get_source_issue.outputs.body }}
           ISSUE_TITLE: "我的微信读书书架 / My WeRead Bookshelf"
-          # 定义目标仓库
           TARGET_REPO: granthuang999/granthuang999.github.io
         run: |
-          # 将Issue正文写入一个临时文件，以避免特殊字符导致命令出错
           echo "$ISSUE_BODY" > body.md
 
-          # 在目标仓库中，根据标题搜索Issue是否存在，并获取其编号
           issue_number=$(gh issue list -R "$TARGET_REPO" --search "in:title \"$ISSUE_TITLE\"" --json number -q '.[0].number')
 
           if [ -n "$issue_number" ]; then
-            # 如果issue_number不为空，说明Issue已存在，执行更新操作
             echo "正在更新仓库 $TARGET_REPO 中的已有Issue #${issue_number}。"
             gh issue edit "$issue_number" -R "$TARGET_REPO" --body-file body.md
           else
-            # 如果issue_number为空，说明Issue不存在，执行创建操作
             echo "正在仓库 $TARGET_REPO 中创建新的Issue。"
             gh issue create -R "$TARGET_REPO" --title "$ISSUE_TITLE" --body-file body.md --label "bookshelf,automated"
           fi
