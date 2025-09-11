@@ -1,7 +1,9 @@
 name: Sync Issues to Blog Repo
 
 on:
-  workflow_dispatch:   # 手动触发
+  # 允许手动触发
+  workflow_dispatch:
+  # 当源仓库的 issue 被创建或编辑时触发
   issues:
     types: [opened, edited]
 
@@ -9,26 +11,31 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
+      # 1. 检出当前仓库代码，以便能访问到工作流文件自身
       - name: Checkout source repo
         uses: actions/checkout@v4
 
+      # 2. 准备要同步到目标仓库的 issue 内容文件
+      # 在 issue 内容顶部添加一个指回源 issue 的链接
       - name: Prepare issue body file
         run: |
-          echo "原始仓库: [weread-to-github-issues#${{ github.event.issue.number }}](${{ github.event.issue.html_url }})" > issue-body.md
+          echo "原始仓库: [${{ github.repository }}#${{ github.event.issue.number }}](${{ github.event.issue.html_url }})" > issue-body.md
           echo "" >> issue-body.md
           echo "${{ github.event.issue.body }}" >> issue-body.md
 
-      # 用 find-comment 来查找是否已有对应 issue
+      # 3. 在目标仓库中查找是否已存在同步过的 issue
+      # 它通过查找一个包含源 issue 链接的特定评论来识别
       - name: Find existing issue in target repo
         id: find
         uses: peter-evans/find-comment@v3
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # 使用你创建的 PAT 来获取读取目标仓库的权限
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
           repository: granthuang999/granthuang999.github.io
           comment-author: github-actions[bot]
-          body-includes: "weread-to-github-issues#${{ github.event.issue.number }}"
+          body-includes: "${{ github.repository }}#${{ github.event.issue.number }}"
 
-      # 如果找到了，就更新 (已修正)
+      # 4. 如果找到了对应的 issue（即 find 步骤的 comment-id 输出不为空），就更新它
       - name: Update issue if exists
         if: steps.find.outputs.comment-id != ''
         run: |
@@ -36,15 +43,17 @@ jobs:
             --title "${{ github.event.issue.title }}" \
             --body-file ./issue-body.md
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # 在 gh CLI 命令中，同样需要使用 PAT 来获取写入权限
+          GH_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
           GH_REPO: granthuang999/granthuang999.github.io
 
-      # 如果没找到，就新建
+      # 5. 如果没有找到，就新建一个 issue
       - name: Create issue if not exists
         if: steps.find.outputs.comment-id == ''
         uses: peter-evans/create-issue-from-file@v5
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # 创建 issue 同样需要 PAT
+          token: ${{ secrets.CROSS_REPO_TOKEN }}
           repository: granthuang999/granthuang999.github.io
           title: ${{ github.event.issue.title }}
           content-filepath: ./issue-body.md
