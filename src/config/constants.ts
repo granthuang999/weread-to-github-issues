@@ -1,6 +1,6 @@
 /**
- * Constants used in the project (Final API Correction)
- * All endpoints now consistently use the i.weread.qq.com data domain.
+ * Constants used in the project (Final Strategy)
+ * This version uses the web URL for the bookshelf and the API domain for all data fetching.
  */
 
 // Local directory to store sync state files, required for compilation.
@@ -12,14 +12,13 @@ export const WEREAD_BASE_URL = "https://weread.qq.com";
 // The primary domain for WeRead data APIs.
 export const WEREAD_API_URL = "https://i.weread.qq.com";
 
-// Endpoint for fetching the bookshelf HTML page.
+// Endpoint for fetching the bookshelf HTML page (the only reliable source for the book list).
 export const BOOKSHELF_URL = `${WEREAD_BASE_URL}/web/shelf`;
 
-// Data endpoints for fetching details.
+// Data endpoints for fetching details. All must use the API domain.
 export const NOTEBOOK_API = `${WEREAD_API_URL}/user/notebooks`;
 export const BOOK_INFO_URL = `${WEREAD_API_URL}/book/info`;
 export const BOOKMARKS_API = `${WEREAD_API_URL}/book/bookmarklist`;
 export const BOOK_THOUGHTS_API = `${WEREAD_API_URL}/review/list`;
-// The progress API endpoint has been removed as it is no longer valid.
-// export const BOOK_PROGRESS_API = `${WEREAD_API_URL}/book/progress`;
+export const BOOK_PROGRESS_API = `${WEREAD_API_URL}/book/progress`;
 
