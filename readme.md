@@ -1,69 +1,24 @@
-# 将微信读书划线/想法等信息同步到 Notion
+# 将微信读书状态自动同步到issues并自动渲染成网页
 
 ## 项目说明
 
-- 支持将微信读书划线/想法同步到 Notion
+- 从https://github.com/sailor0913/weread-to-notion获得启发并且fork源仓库自行修改修改。修改后本仓库已经不具备同步到Notion功能，请务必注意。
 - 通过 github actions 每天定时同步
 - 同步微信读书部分元数据信息
 
 ## 最终效果
 
-[点我查看在线版](https://sailor0913.notion.site/2025-1f769034c78f8089b130e603c2443e29)
+[点我查看在线版](https://www.futuremedia.work/post/weread-shelf-sync.html)
 
 ## 截图
-
-画廊
-![画廊](images/画廊.png)
-
-表格
-![表格](images/表格.png)
+![表格](images/screen.png)
 
 ## 使用教程
 
-**注意：** 项目仍在迭代中，后续更新功能/模板相关说明会在公众号说明
+**注意：** 项目仍在迭代中，后续如果能拿到微信读书新api的权限的方法，可以考虑为每一本书生成issue和讨论。
 
 ### 文字教程
-
-[基础配置](https://mp.weixin.qq.com/s/uOtyp-88iPIfN10szycBvg)  
-[支持配置阅读状态/作者](https://mp.weixin.qq.com/s/EDLoitY-qFSdMl5CHvQqzA)
-
-### 视频教程
-
-[Youtube](https://www.youtube.com/watch?v=q_k_0l2zSKA&ab_channel=sailor)
-
-[BiliBili](https://www.bilibili.com/video/BV1n8ErzUEeB)
-
-## 相关配置信息
-
-[notion 集成申请](https://www.notion.so/profile/integrations)  
-[模板地址](https://sailor0913.notion.site/1f269034c78f8019af2dc928f665bca9?pvs=73)
-
-## 欢迎关注我
-
-> [!IMPORTANT]  
-> 关注公众号获取教程，后续有更新会第一时间在公众号里发布。
-
-![码道禅心](images/码道禅心.png)
-
-## 捐赠
-
-如果你觉得本项目帮助了你，请作者喝一杯咖啡，你的支持是作者最大的动力。
-
-| 微信支付                                                              | 支付宝支付                                                              |
-| --------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| <div align="center"><img src="images/微信收款.png" width="50%"></div> | <div align="center"><img src="images/支付宝收款.jpg" width="50%"></div> |
-
-## 重要更新
-
-- 增加使用 raycast 快速触发 actions 脚本
-- 增加配置选项，支持按照作者、阅读状态进行同步
-
-## TODO
-
-- ~~筛选功能：仅同步已读和在读书籍~~
-- ~~支持按章节组织划线/想法~~
-- ~~支持自定义全量/增量同步~~
-- ~~支持写入 isbn 和出版社信息~~
+ 如果需要教程，请联系我。也请关注[未来传媒](https://www.futuremedia.work)
 
 ## 致谢
 
