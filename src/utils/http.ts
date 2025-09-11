@@ -1,66 +1,53 @@
 /**
- * HTTP请求工具 (最终决定版修正)
+ * HTTP请求工具 (最终API修正版)
  */
+import { WEREAD_API_URL, WEREAD_BASE_URL } from '../config/constants';
 
 /**
- * 获取用于 weread.qq.com 域的标准请求头
+ * 获取用于 weread.qq.com 域（网页）的请求头
  */
-export function getHeaders(cookie: string): Record<string, string> {
+export function getShelfHeaders(cookie: string): Record<string, string> {
+  return {
+    Cookie: cookie,
+    "User-Agent":
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
+    Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+    "Accept-Language": "zh-CN,zh;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
+    Referer: WEREAD_BASE_URL,
+    Origin: WEREAD_BASE_URL,
+  };
+}
+
+/**
+ * 获取用于 i.weread.qq.com 域（数据API）的请求头
+ */
+export function getApiHeaders(cookie: string): Record<string, string> {
   return {
     Cookie: cookie,
     "User-Agent":
       "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
     Accept: "application/json, text/plain, */*",
-    "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8,zh-TW;q=0.7",
-    "Accept-Encoding": "gzip, deflate, br, zstd",
+    "Accept-Language": "zh-CN,zh;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
     "Content-Type": "application/json",
-    Referer: "https://weread.qq.com/web/shelf",
-    Origin: "https://weread.qq.com",
+    // 关键修正：确保来源域正确
+    Referer: WEREAD_API_URL,
+    Origin: WEREAD_API_URL,
   };
 }
 
 /**
- * 【新增】获取专用于 i.weread.qq.com 域的请求头
- * 核心修正：Referer 和 Origin 指向正确的数据接口域
- */
-export function getNotebookHeaders(cookie: string): Record<string, string> {
-  return {
-    Cookie: cookie,
-    "User-Agent":
-      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
-    Accept: "application/json, text/plain, */*",
-    "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8,zh-TW;q=0.7",
-    "Accept-Encoding": "gzip, deflate, br, zstd",
-    // 关键修正
-    Referer: "https://i.weread.qq.com/",
-    Origin: "https://i.weread.qq.com",
-  };
-}
-
-
-/**
- * 获取微信读书划线请求头 (保持不变)
+ * 获取微信读书划线等详细信息的请求头
  */
 export function getHighlightHeaders(
   cookie: string,
   bookId: string
 ): Record<string, string> {
   return {
-    Cookie: cookie,
-    "User-Agent":
-      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
-    Accept: "application/json, text/plain, */*",
-    "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8,zh-TW;q=0.7",
-    "Accept-Encoding": "gzip, deflate, br, zstd",
-    Referer: `https://weread.qq.com/web/reader/${bookId}`,
-    Origin: "https://weread.qq.com",
-    "sec-ch-ua":
-      '"Google Chrome";v="135", "Not-A.Brand";v="8", "Chromium";v="135"',
-    "sec-ch-ua-mobile": "?0",
-    "sec-ch-ua-platform": '"macOS"',
-    "sec-fetch-dest": "empty",
-    "sec-fetch-mode": "cors",
-    "sec-fetch-site": "same-origin",
+    ...getApiHeaders(cookie), // 复用API请求头
+    // 覆盖特定的 Referer, 模拟正在阅读这本书
+    Referer: `${WEREAD_API_URL}/web/reader/${bookId}`,
   };
 }
 
