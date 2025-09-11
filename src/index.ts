@@ -7,7 +7,8 @@ import { parseArgs } from "./core/cli";
 import { getBrowserCookie } from "./utils/cookie";
 import { refreshSession, getBookshelfBooks } from "./api/weread/services";
 import { syncBookToGithub } from "./core/sync/sync-to-github";
-import { getAllBookIssuesMap } from "../../api/github/services";
+// 关键修正：修复了错误的导入路径
+import { getAllBookIssuesMap } from "./api/github/services";
 
 // Load environment variables from .env file
 dotenv.config({ path: ".env" });
