@@ -5,7 +5,7 @@
 import dotenv from "dotenv";
 import { parseArgs } from "./core/cli";
 import { getBrowserCookie } from "./utils/cookie";
-import { refreshSession, getBookshelfBooks } from "./api/weread/services";
+import { refreshSession, getBookshelfBooks, getNotebookBooks } from "./api/weread/services";
 import { enhanceBookMetadata } from "./core/formatter";
 import { syncBookToGithub } from "./core/sync/sync-to-github";
 
@@ -19,28 +19,19 @@ async function main() {
   try {
     console.log("=== WeRead → GitHub Issues Sync Started ===");
 
-    // We don't need to validate GitHub env vars here,
-    // as they are read directly by the GitHub service module.
-    
-    // Parse command-line arguments
     const { bookId, syncAll, fullSync } = parseArgs();
-
-    // Get WeRead Cookie
     let cookie = getBrowserCookie();
     console.log("Cookie loaded successfully.");
 
-    // Refresh session to ensure the cookie is valid
     cookie = await refreshSession(cookie);
     console.log("Session has been refreshed.");
 
     if (syncAll) {
-      // Sync all books
-      console.log("Fetching all books from bookshelf and notebooks...");
+      console.log("Fetching all books from bookshelf...");
       
-      // New Strategy: Only rely on the bookshelf as the single source of truth
+      // 我们现在只从书架HTML获取，因为这是唯一可靠的数据源
       const shelfBooks = await getBookshelfBooks(cookie);
       
-      // The enhanceBookMetadata function is still useful for adding reading progress info
       const allBooks = await enhanceBookMetadata(cookie, shelfBooks, []);
 
       console.log(`Found ${allBooks.length} books in total. Starting sync for each...`);
@@ -48,15 +39,14 @@ async function main() {
       for (let i = 0; i < allBooks.length; i++) {
         const book = allBooks[i];
         console.log(`\n[${i + 1}/${allBooks.length}] Syncing book: 《${book.title}》...`);
-        // Corrected: Removed the third argument to match the function's expected signature.
         await syncBookToGithub(cookie, book);
+        
+        // 【关键修正】增加2秒延时，防止GitHub API速率限制
+        console.log("Waiting for 2 seconds to avoid rate limiting...");
+        await new Promise(resolve => setTimeout(resolve, 2000)); 
       }
     } else if (bookId) {
-      // Sync a single book
-      // For single book sync, we need a placeholder Book object
-      // The full details will be fetched inside the sync function
       const placeholderBook = { bookId, title: `Book with ID ${bookId}`, author: 'Unknown', cover: '' };
-      // Corrected: Removed the third argument to match the function's expected signature.
       await syncBookToGithub(cookie, placeholderBook);
     } else {
       console.log(
