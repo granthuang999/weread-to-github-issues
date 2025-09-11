@@ -48,14 +48,16 @@ async function main() {
       for (let i = 0; i < allBooks.length; i++) {
         const book = allBooks[i];
         console.log(`\n[${i + 1}/${allBooks.length}] Syncing book: 《${book.title}》...`);
-        await syncBookToGithub(cookie, book, !fullSync);
+        // Corrected: Removed the third argument to match the function's expected signature.
+        await syncBookToGithub(cookie, book);
       }
     } else if (bookId) {
       // Sync a single book
       // For single book sync, we need a placeholder Book object
       // The full details will be fetched inside the sync function
       const placeholderBook = { bookId, title: `Book with ID ${bookId}`, author: 'Unknown', cover: '' };
-      await syncBookToGithub(cookie, placeholderBook, !fullSync);
+      // Corrected: Removed the third argument to match the function's expected signature.
+      await syncBookToGithub(cookie, placeholderBook);
     } else {
       console.log(
         "Please specify a book ID with --bookId=xxx or use --all to sync all books."
