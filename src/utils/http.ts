@@ -1,5 +1,5 @@
 /**
- * HTTP请求工具 (最终API修正版)
+ * HTTP请求工具 (最终策略版)
  */
 import { WEREAD_API_URL, WEREAD_BASE_URL } from '../config/constants';
 
@@ -15,7 +15,6 @@ export function getShelfHeaders(cookie: string): Record<string, string> {
     "Accept-Language": "zh-CN,zh;q=0.9",
     "Accept-Encoding": "gzip, deflate, br",
     Referer: WEREAD_BASE_URL,
-    Origin: WEREAD_BASE_URL,
   };
 }
 
@@ -47,7 +46,7 @@ export function getHighlightHeaders(
   return {
     ...getApiHeaders(cookie), // 复用API请求头
     // 覆盖特定的 Referer, 模拟正在阅读这本书
-    Referer: `${WEREAD_BASE_URL}/web/reader/${bookId}`, // 这里使用旧的 Referer 仍然有效
+    Referer: `${WEREAD_API_URL}/web/reader/${bookId}`,
   };
 }
 
