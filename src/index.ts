@@ -1,14 +1,12 @@
 /**
- * WeRead to Markdown Bookshelf Tool (Main Program)
- * This version only generates the markdown and saves it to a file.
+ * WeRead to GitHub Issue Bookshelf Tool (Main Program)
  */
 
 import dotenv from "dotenv";
-import * as fs from "fs";
-import * as path from "path";
 import { getBrowserCookie } from "./utils/cookie";
 import { refreshSession, getBookshelfBooks } from "./api/weread/services";
 import { generateBookshelfMarkdown } from "./core/markdown-generator";
+import { findOrCreateBookshelfIssue, updateBookshelfIssue } from "./api/github/services";
 
 // Load environment variables from .env file
 dotenv.config({ path: ".env" });
@@ -18,7 +16,7 @@ dotenv.config({ path: ".env" });
  */
 async function main() {
   try {
-    console.log("=== WeRead Bookshelf to Markdown Generator Started ===");
+    console.log("=== WeRead Bookshelf to Issue Sync Started ===");
 
     let cookie = getBrowserCookie();
     console.log("Cookie loaded successfully.");
@@ -33,16 +31,19 @@ async function main() {
       // 2. 如果成功获取到书籍，则生成 Markdown 内容
       const markdownContent = generateBookshelfMarkdown(allBooks);
       
-      // 3. 将完整的 Markdown 内容写入本地文件
-      const outputFilePath = path.resolve(process.cwd(), "bookshelf.md");
-      fs.writeFileSync(outputFilePath, markdownContent, 'utf8');
-      console.log(`✅ Successfully generated bookshelf markdown at: ${outputFilePath}`);
+      // 3. 查找或创建一个专用的书架Issue
+      const bookshelfIssue = await findOrCreateBookshelfIssue();
+
+      // 4. 如果Issue存在（或创建成功），则用新的 Markdown 内容更新它
+      if (bookshelfIssue && bookshelfIssue.number) {
+        await updateBookshelfIssue(bookshelfIssue.number, markdownContent);
+      }
 
     } else {
-      console.log("未能获取到任何书籍，跳过生成步骤。");
+      console.log("未能获取到任何书籍，跳过同步。");
     }
 
-    console.log("\n=== Markdown Generation finished. ===");
+    console.log("\n=== Process finished. ===");
   } catch (error: any) {
     console.error("An error occurred during the process:", error.message);
   }
