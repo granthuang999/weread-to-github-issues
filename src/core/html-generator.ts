@@ -12,7 +12,6 @@ import * as path from "path";
  * @returns 完整的HTML字符串
  */
 export function generateBookshelfHtml(books: Book[]): string {
-  // HTML头部，引入Tailwind CSS和字体
   const head = `
     <head>
       <meta charset="UTF-8">
@@ -24,10 +23,10 @@ export function generateBookshelfHtml(books: Book[]): string {
       <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
       <style>
         body { font-family: 'Noto Sans SC', sans-serif; }
-        .book-cover {
+        .book-card {
           transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
-        .book-cover:hover {
+        .book-card:hover {
           transform: scale(1.05) translateY(-5px);
           box-shadow: 0 10px 20px rgba(0,0,0,0.2), 0 6px 6px rgba(0,0,0,0.23);
         }
@@ -35,33 +34,41 @@ export function generateBookshelfHtml(books: Book[]): string {
     </head>
   `;
 
-  // 根据书籍数据生成每个书籍卡片
   const bookCards = books.map(book => {
-    // 【新增】确定阅读状态和对应的徽章颜色
+    // 【升级】更健壮的阅读状态判断
     let statusBadge = '';
     // finishReading 为 1 代表已读完
     if (book.finishReading === 1) {
         statusBadge = `<span class="absolute top-2 right-2 bg-green-500 text-white text-xs font-semibold px-2 py-1 rounded-full shadow-md">已读</span>`;
     } else {
+        // 其他所有情况（包括没有 finishReading 字段或值为0）都视为在读
         statusBadge = `<span class="absolute top-2 right-2 bg-blue-500 text-white text-xs font-semibold px-2 py-1 rounded-full shadow-md">在读</span>`;
     }
 
+    // 【升级】提取出版年份
+    const publishYear = book.publishTime ? new Date(book.publishTime).getFullYear() : '';
+
     return `
-    <div class="book-card flex flex-col items-center text-center group">
-      <div class="relative">
+    <div class="book-card flex flex-col items-center text-center group p-2">
+      <div class="relative mb-3">
         <a href="https://weread.qq.com/web/reader/${book.bookId}" target="_blank" rel="noopener noreferrer">
-          <img src="${book.cover}" alt="${book.title}" class="book-cover w-32 h-48 lg:w-40 lg:h-60 object-cover rounded-md shadow-lg mb-3 bg-gray-200">
+          <img 
+            src="${book.cover}" 
+            alt="${book.title}" 
+            class="book-cover w-36 h-52 lg:w-40 lg:h-60 object-cover rounded-md shadow-lg bg-gray-200"
+            onerror="this.onerror=null;this.src='https://weread-1258476243.file.myqcloud.com/app/assets/bookcover/book_cover_default.svg';"
+          >
         </a>
         ${statusBadge}
       </div>
-      <h3 class="text-sm font-bold text-gray-800 dark:text-gray-200 w-32 lg:w-40 truncate" title="${book.title}">${book.title}</h3>
-      <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 w-32 lg:w-40 truncate" title="${book.author}">${book.author || '未知作者'}</p>
-      <!-- 【新增】显示书籍分类 -->
-      <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">${book.category || ''}</p>
+      <h3 class="text-sm font-bold text-gray-800 dark:text-gray-200 w-36 lg:w-40 truncate" title="${book.title}">${book.title}</h3>
+      <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 w-36 lg:w-40 truncate" title="${book.author || '未知作者'}">${book.author || '未知作者'}</p>
+      <!-- 【升级】显示出版社和年份 -->
+      <p class="text-xs text-gray-400 dark:text-gray-500 mt-1 w-36 lg:w-40 truncate" title="${book.publisher || ''}">${book.publisher || ''}</p>
+      <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">${publishYear}</p>
     </div>
   `}).join('');
 
-  // 完整的HTML页面结构
   const body = `
     <body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
       <div class="container mx-auto px-4 py-8">
@@ -69,7 +76,7 @@ export function generateBookshelfHtml(books: Book[]): string {
           <h1 class="text-4xl font-bold">我的书架</h1>
           <p class="text-gray-500 dark:text-gray-400 mt-2">共 ${books.length} 本书・同步于 ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}</p>
         </header>
-        <main class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-6 md:gap-8">
+        <main class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-x-4 gap-y-8">
           ${bookCards}
         </main>
         <footer class="text-center mt-12 text-gray-400 dark:text-gray-500 text-sm">
@@ -84,8 +91,6 @@ export function generateBookshelfHtml(books: Book[]): string {
 
 /**
  * 将生成的HTML内容写入到文件
- * @param htmlContent HTML字符串
- * @param outputPath 输出路径，默认为项目根目录下的 'book.html'
  */
 export function writeHtmlToFile(htmlContent: string, outputPath: string = "book.html"): void {
   try {
