@@ -47,7 +47,7 @@ export function getHighlightHeaders(
   return {
     ...getApiHeaders(cookie), // 复用API请求头
     // 覆盖特定的 Referer, 模拟正在阅读这本书
-    Referer: `${WEREAD_API_URL}/web/reader/${bookId}`,
+    Referer: `${WEREAD_BASE_URL}/web/reader/${bookId}`, // 这里使用旧的 Referer 仍然有效
   };
 }
 
