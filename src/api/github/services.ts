@@ -24,6 +24,7 @@ export async function getAllBookIssuesMap(): Promise<Map<string, any>> {
       owner: REPO_OWNER,
       repo: REPO_NAME,
       state: "open", // 只获取开放的issues
+      labels: "weread", // 只获取带有 'weread' 标签的 issues
     });
 
     for (const issue of issues) {
@@ -61,7 +62,7 @@ export async function createNewIssueForBook(book: Book): Promise<number | null> 
       repo: REPO_NAME,
       title: `读书笔记：${book.title}`,
       body: body,
-      labels: ["weread", "reading-notes"],
+      labels: ["weread", "reading-notes"], // 自动打上标签
     });
 
     if (response.status === 201) {
