@@ -20,5 +20,6 @@ export const NOTEBOOK_API = `${WEREAD_API_URL}/user/notebooks`;
 export const BOOK_INFO_URL = `${WEREAD_API_URL}/book/info`;
 export const BOOKMARKS_API = `${WEREAD_API_URL}/book/bookmarklist`;
 export const BOOK_THOUGHTS_API = `${WEREAD_API_URL}/review/list`;
-export const BOOK_PROGRESS_API = `${WEREAD_API_URL}/book/progress`;
+// The progress API endpoint has been removed as it is no longer valid.
+// export const BOOK_PROGRESS_API = `${WEREAD_API_URL}/book/progress`;
 
