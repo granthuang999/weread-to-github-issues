@@ -1,9 +1,11 @@
 /**
  * WeRead to Markdown Bookshelf Tool (Main Program)
- * This version only generates and prints the markdown.
+ * This version only generates the markdown and saves it to a file.
  */
 
 import dotenv from "dotenv";
+import * as fs from "fs";
+import * as path from "path";
 import { getBrowserCookie } from "./utils/cookie";
 import { refreshSession, getBookshelfBooks } from "./api/weread/services";
 import { generateBookshelfMarkdown } from "./core/markdown-generator";
@@ -31,11 +33,10 @@ async function main() {
       // 2. 如果成功获取到书籍，则生成 Markdown 内容
       const markdownContent = generateBookshelfMarkdown(allBooks);
       
-      // 3. 【关键修正】将完整的 Markdown 内容打印出来
-      // 我们用特殊标记包裹它，方便工作流的下一步捕捉
-      console.log("---START_BOOKSHELF_MARKDOWN---");
-      console.log(markdownContent);
-      console.log("---END_BOOKSHELF_MARKDOWN---");
+      // 3. 将完整的 Markdown 内容写入本地文件
+      const outputFilePath = path.resolve(process.cwd(), "bookshelf.md");
+      fs.writeFileSync(outputFilePath, markdownContent, 'utf8');
+      console.log(`✅ Successfully generated bookshelf markdown at: ${outputFilePath}`);
 
     } else {
       console.log("未能获取到任何书籍，跳过生成步骤。");
