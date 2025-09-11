@@ -18,17 +18,19 @@ jobs:
           echo "" >> issue-body.md
           echo "${{ github.event.issue.body }}" >> issue-body.md
 
+      # 用 find-comment 来查找是否已有对应 issue
       - name: Find existing issue in target repo
         id: find
-        uses: peter-evans/find-issue@v3
+        uses: peter-evans/find-comment@v3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           repository: granthuang999/granthuang999.github.io
-          labels: synced-from-weread
+          comment-author: github-actions[bot]
           body-includes: "weread-to-github-issues#${{ github.event.issue.number }}"
 
+      # 如果找到了，就更新
       - name: Update issue if exists
-        if: steps.find.outputs.issue-number != ''
+        if: steps.find.outputs.comment-id != ''
         uses: peter-evans/update-issue-from-file@v3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -38,8 +40,9 @@ jobs:
           content-filepath: ./issue-body.md
           labels: synced-from-weread
 
+      # 如果没找到，就新建
       - name: Create issue if not exists
-        if: steps.find.outputs.issue-number == ''
+        if: steps.find.outputs.comment-id == ''
         uses: peter-evans/create-issue-from-file@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
